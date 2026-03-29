@@ -3,7 +3,7 @@
 
 # zxlite.js 完整 API 参考手册
 
-**版本**: v1.2.0
+**版本**: v1.2.4
 
 ## 概述
 
@@ -268,7 +268,7 @@ data = zxd.json(data, 'add', 'city', '北京');
 var age = zxd.json(data, 'get', 'age');
 
 // 网络请求
-zxd.get('https://api.example.com').then(html => console.log(html));
+zxd.ajaxGet('https://api.example.com').then(html => console.log(html));
 zxd.post('https://api.example.com', {name:'张三'}).then(res => {});
 
 // 事件绑定
@@ -345,6 +345,7 @@ var copy = zxd.cloneDeep({a:1,b:{c:2}});
 
 版本历史
 
+· v1.2.4 - 补齐文档中列出的基础 API，新增 rotate/crop/date 等缺失实现，修复动画 alternate 行为
 · v1.2.0 - 新增 30+ 动画、完整 DOM 操作、音频 continue、pis 方法、自定义动画
 · v1.1.0 - 新增 60+ 工具函数
 · v1.0.0 - 初始版本

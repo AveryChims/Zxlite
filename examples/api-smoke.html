@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Zxlite API Smoke Test</title>
+    <link rel="icon" href="data:,">
+    <style>
+        body {
+            margin: 0;
+            padding: 24px;
+            font: 16px/1.5 "Segoe UI", sans-serif;
+            background: #f5f7fb;
+            color: #1f2937;
+        }
+
+        .panel {
+            max-width: 880px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 18px 60px rgba(15, 23, 42, 0.08);
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 28px;
+        }
+
+        .summary {
+            margin: 16px 0 24px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            background: #eef6ff;
+            color: #0f3d73;
+        }
+
+        .ok {
+            color: #0f8a4b;
+        }
+
+        .fail {
+            color: #c62828;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+
+        #lab {
+            margin-top: 24px;
+            min-height: 80px;
+        }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <h1>Zxlite Smoke Test</h1>
+        <div id="summary" class="summary">运行中...</div>
+        <ul id="results"></ul>
+        <div id="lab"></div>
+    </div>
+
+    <script src="../zxlite.js"></script>
+    <script>
+        (async function () {
+            var results = document.getElementById('results');
+            var summary = document.getElementById('summary');
+            var pass = 0;
+            var fail = 0;
+
+            function pushResult(ok, label, detail) {
+                var item = document.createElement('li');
+                item.className = ok ? 'ok' : 'fail';
+                item.textContent = (ok ? 'PASS: ' : 'FAIL: ') + label + (detail ? ' -> ' + detail : '');
+                results.appendChild(item);
+                if (ok) pass += 1;
+                else fail += 1;
+            }
+
+            function test(label, condition, detail) {
+                pushResult(!!condition, label, detail);
+            }
+
+            try {
+                zxd.new('base', 'box', 'div', { width: '120px', height: '40px', background: '#dde8ff' });
+                zxd.text('box', 'hello');
+                test('text/get', zxd.get('box', 'text') === 'hello', zxd.get('box', 'text'));
+
+                zxd.attr('box', 'title', 'demo-box');
+                test('attr/get', zxd.attr('box', 'title') === 'demo-box', zxd.attr('box', 'title'));
+
+                zxd.data('box', 'roleName', 'smoke');
+                test('data set/get', zxd.data('box', 'roleName') === 'smoke', zxd.data('box', 'roleName'));
+
+                zxd.addClass('box', 'alpha');
+                test('class lookup', zxd.class('alpha').length >= 1, 'count=' + zxd.class('alpha').length);
+
+                test('toggleClass add', zxd.toggleClass('box', 'beta') === true, zxd.id('box').className);
+                test('toggleClass remove', zxd.toggleClass('box', 'beta') === false, zxd.id('box').className);
+
+                zxd.width('box', 150);
+                zxd.height('box', 50);
+                test('width set', zxd.id('box').style.width === '150px', zxd.id('box').style.width);
+                test('height set', zxd.id('box').style.height === '50px', zxd.id('box').style.height);
+
+                var clone = zxd.clone('box');
+                clone.id = 'box-clone';
+                zxd.after('box', clone);
+                test('after + sibling', zxd.sibling('box', true).id === 'box-clone', zxd.sibling('box', true).id);
+                test('parent/children', zxd.parent('box').tagName === 'BODY' && zxd.children(document.body).length >= 2, 'children=' + zxd.children(document.body).length);
+
+                zxd.empty('box-clone');
+                test('empty', zxd.html('box-clone') === '', zxd.html('box-clone'));
+
+                test('substr/ctt', zxd.substr('abcdef', 2, 3) === 'cde' && zxd.ctt('abcdef', 1, 2) === 'bc', zxd.substr('abcdef', 2, 3));
+                test('indexOf/gtt', zxd.indexOf('abcdef', 'd') === 3 && zxd.gtt('abcdef', 'e') === 4, String(zxd.indexOf('abcdef', 'd')));
+                test('ue/ud', zxd.ud(zxd.ue('测试 空格')) === '测试 空格', zxd.ue('测试 空格'));
+                test('escape/unescape', zxd.unescape(zxd.escape('<b>x</b>')) === '<b>x</b>', zxd.escape('<b>x</b>'));
+                test('date', Object.prototype.toString.call(zxd.date()) === '[object Date]', zxd.date().toISOString());
+
+                var svg = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
+                    "<svg xmlns='http://www.w3.org/2000/svg' width='40' height='20'><rect width='40' height='20' fill='#2b6cff'/></svg>"
+                );
+                var rotated = await zxd.rotate(svg, 90);
+                var cropped = await zxd.crop(svg, 0, 20, 0, 10);
+                test('rotate', typeof rotated === 'string' && rotated.indexOf('data:image/') === 0, rotated.slice(0, 24));
+                test('crop', typeof cropped === 'string' && cropped.indexOf('data:image/') === 0, cropped.slice(0, 24));
+            } catch (error) {
+                pushResult(false, 'unexpected error', error && error.message ? error.message : String(error));
+                console.error(error);
+            }
+
+            summary.textContent = '总计 ' + (pass + fail) + ' 项，成功 ' + pass + ' 项，失败 ' + fail + ' 项。';
+            console.log('smoke summary:', { pass: pass, fail: fail });
+        })();
+    </script>
+</body>
+</html>
