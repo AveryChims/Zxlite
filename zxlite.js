@@ -1,6 +1,6 @@
 /**
- * zxlite.js - 轻量级前端工具库 v1.2.3
- * 修复版：解决命名冲突，确保所有方法返回正确值
+ * zxlite.js - 轻量级前端工具库 v1.2.4
+ * 补齐文档中的常用 API，并修复部分行为不一致问题
  */
 (function(global) {
     'use strict';
@@ -40,6 +40,33 @@
         if (!id) return null;
         if (typeof id === 'string') return document.getElementById(id);
         return id;
+    }
+
+    function toDataAttr(key) {
+        return 'data-' + String(key)
+            .replace(/^data-/, '')
+            .replace(/([A-Z])/g, '-$1')
+            .toLowerCase();
+    }
+
+    function loadImageSource(src) {
+        return new Promise(function(resolve, reject) {
+            if (typeof HTMLImageElement !== 'undefined' && src instanceof HTMLImageElement) {
+                if (src.complete && (src.naturalWidth || src.width)) {
+                    resolve(src);
+                    return;
+                }
+                src.onload = function() { resolve(src); };
+                src.onerror = reject;
+                return;
+            }
+
+            var image = new Image();
+            image.crossOrigin = 'anonymous';
+            image.onload = function() { resolve(image); };
+            image.onerror = reject;
+            image.src = src;
+        });
     }
     
     // ==================== DOM操作核心 ====================
@@ -116,6 +143,31 @@
     Z.id = function(id) {
         return document.getElementById(id);
     };
+
+    Z.tag = function(tag, parent) {
+        var root = parent ? getEl(parent) : document;
+        return root ? root.getElementsByTagName(tag) : [];
+    };
+
+    Z.class = function(cls, parent) {
+        var root = parent ? getEl(parent) : document;
+        return root ? root.getElementsByClassName(cls) : [];
+    };
+
+    Z.attr = function(id, name, value) {
+        var el = getEl(id);
+        if (!el) return null;
+        if (value === undefined) return el.getAttribute(name);
+        el.setAttribute(name, value);
+        return el;
+    };
+
+    Z.rmAttr = function(id, name) {
+        var el = getEl(id);
+        if (!el) return false;
+        el.removeAttribute(name);
+        return true;
+    };
     
     Z.hide = function(id) {
         var el = getEl(id);
@@ -126,6 +178,18 @@
     Z.show = function(id) {
         var el = getEl(id);
         if (el) el.style.display = '';
+        return el;
+    };
+
+    Z.toggle = function(id) {
+        var el = getEl(id);
+        if (!el) return null;
+        if (getComputedStyle(el).display === 'none') {
+            el.style.display = el.dataset.zxdDisplay || '';
+        } else {
+            el.dataset.zxdDisplay = el.style.display || '';
+            el.style.display = 'none';
+        }
         return el;
     };
     
@@ -139,6 +203,12 @@
         var el = getEl(id);
         if (el) el.classList.remove(cls);
         return el;
+    };
+
+    Z.toggleClass = function(id, cls) {
+        var el = getEl(id);
+        if (!el) return false;
+        return el.classList.toggle(cls);
     };
     
     Z.hasClass = function(id, cls) {
@@ -211,6 +281,67 @@
         }
         return false;
     };
+
+    Z.parent = function(id) {
+        var el = getEl(id);
+        return el ? el.parentElement : null;
+    };
+
+    Z.children = function(id) {
+        var el = getEl(id);
+        return el ? el.children : [];
+    };
+
+    Z.sibling = function(id, next) {
+        var el = getEl(id);
+        if (!el) return null;
+        return next ? el.nextElementSibling : el.previousElementSibling;
+    };
+
+    Z.before = function(target, child) {
+        var el = getEl(target);
+        var node = getEl(child);
+        if (!el || !el.parentNode || !node) return false;
+        el.parentNode.insertBefore(node, el);
+        return true;
+    };
+
+    Z.after = function(target, child) {
+        var el = getEl(target);
+        var node = getEl(child);
+        if (!el || !el.parentNode || !node) return false;
+        el.parentNode.insertBefore(node, el.nextSibling);
+        return true;
+    };
+
+    Z.empty = function(id) {
+        var el = getEl(id);
+        if (!el) return false;
+        el.innerHTML = '';
+        return true;
+    };
+
+    Z.clone = function(id, deep) {
+        var el = getEl(id);
+        if (!el) return null;
+        return el.cloneNode(deep !== false);
+    };
+
+    Z.width = function(id, val) {
+        var el = getEl(id);
+        if (!el) return null;
+        if (val === undefined) return el.getBoundingClientRect().width;
+        el.style.width = typeof val === 'number' ? val + 'px' : val;
+        return el;
+    };
+
+    Z.height = function(id, val) {
+        var el = getEl(id);
+        if (!el) return null;
+        if (val === undefined) return el.getBoundingClientRect().height;
+        el.style.height = typeof val === 'number' ? val + 'px' : val;
+        return el;
+    };
     
     // ==================== 音频控制 ====================
     
@@ -274,20 +405,22 @@
     // ==================== 动画 ====================
     
     Z.anim = function(id, type, dur, dir) {
-        dir = dir || 'normal';
         var el = getEl(id);
         if (!el) return null;
         var cfg = Z._at[type] || Z._customAnims.get(type);
         if (!cfg) return null;
+        var direction = cfg.alt ? 'alternate' : 'normal';
+        if (dir === 'reverse' || dir === 'alternate' || dir === 'alternate-reverse') {
+            direction = dir;
+        }
         
         for (var p in cfg.init) el.style[p] = cfg.init[p];
         var anim = el.animate([cfg.init, cfg.key], {
             duration: dur || cfg.dur,
-            direction: dir === 'reverse' ? 'reverse' : 'normal',
+            direction: direction,
             fill: 'forwards',
             easing: cfg.easing || 'ease',
-            iterations: cfg.iter || 1,
-            alternate: cfg.alt || false
+            iterations: cfg.iter || 1
         });
         return anim;
     };
@@ -542,6 +675,36 @@
     Z.strcm = function(str) { return str.trim(); };
     Z.len = function(str) { return str.length; };
     Z.long = function(str) { return str.length; };
+    Z.substr = function(str, pos, len) {
+        if (len === undefined) return String(str).substr(pos);
+        return String(str).substr(pos, len);
+    };
+    Z.ctt = function(str, pos, len) {
+        return Z.substr(str, pos, len);
+    };
+    Z.indexOf = function(str, char) {
+        return String(str).indexOf(char);
+    };
+    Z.gtt = function(str, char) {
+        return Z.indexOf(str, char);
+    };
+    Z.ue = function(str) { return encodeURIComponent(str); };
+    Z.mku = function(str) { return encodeURIComponent(str); };
+    Z.ud = function(str) { return decodeURIComponent(str); };
+    Z.rku = function(str) { return decodeURIComponent(str); };
+    Z.escape = function(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    };
+    Z.unescape = function(str) {
+        var text = document.createElement('textarea');
+        text.innerHTML = str;
+        return text.value;
+    };
     
     Z.copy = function(text) {
         var ta = document.createElement('textarea');
@@ -575,6 +738,10 @@
     };
     
     Z.now = function() { return Date.now(); };
+    
+    Z.date = function() {
+        return new Date();
+    };
     
     // ==================== 随机数 ====================
     
@@ -692,10 +859,17 @@
         return window.location.pathname;
     };
     
-    Z.data = function(type) {
-        if (type === 'ua') return navigator.userAgent;
-        if (type === 'url') return window.location.href;
-        return '';
+    Z.data = function(el, key, val) {
+        if (arguments.length === 1 && typeof el === 'string') {
+            if (el === 'ua') return navigator.userAgent;
+            if (el === 'url') return window.location.href;
+        }
+        var node = getEl(el);
+        if (!node || !key) return null;
+        var attr = toDataAttr(key);
+        if (val === undefined) return node.getAttribute(attr);
+        node.setAttribute(attr, val);
+        return val;
     };
     
     Z.store = function(k, v) {
@@ -800,6 +974,10 @@
     Z.deepCopy = function(obj) {
         return JSON.parse(JSON.stringify(obj));
     };
+
+    Z.copyDeep = function(obj) {
+        return JSON.parse(JSON.stringify(obj));
+    };
     
     Z.rgb2hex = function(r, g, b) {
         return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
@@ -827,6 +1005,39 @@
         url.searchParams.delete(name);
         history.pushState({}, '', url);
         return true;
+    };
+
+    Z.rotate = function(img, angle) {
+        return loadImageSource(img).then(function(image) {
+            var width = image.naturalWidth || image.width;
+            var height = image.naturalHeight || image.height;
+            var rad = angle * Math.PI / 180;
+            var sin = Math.abs(Math.sin(rad));
+            var cos = Math.abs(Math.cos(rad));
+            var canvas = document.createElement('canvas');
+            canvas.width = Math.ceil(width * cos + height * sin);
+            canvas.height = Math.ceil(width * sin + height * cos);
+
+            var ctx = canvas.getContext('2d');
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate(rad);
+            ctx.drawImage(image, -width / 2, -height / 2, width, height);
+            return canvas.toDataURL();
+        });
+    };
+
+    Z.crop = function(img, sx, ex, sy, ey) {
+        return loadImageSource(img).then(function(image) {
+            var width = Math.max(0, ex - sx);
+            var height = Math.max(0, ey - sy);
+            var canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(image, sx, sy, width, height, 0, 0, width, height);
+            return canvas.toDataURL();
+        });
     };
     
     Z.isStr = function(v) { return typeof v === 'string'; };
@@ -863,4 +1074,4 @@
     
 })(typeof window !== 'undefined' ? window : this);
 
-if (typeof console !== 'undefined') console.log('zxlite.js v1.2.3 loaded - 修复网络请求命名冲突');
+if (typeof console !== 'undefined') console.log('zxlite.js v1.2.4 loaded - 补齐文档 API');
