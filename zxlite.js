@@ -1,6 +1,6 @@
 /**
- * zxlite.js - 轻量级前端工具库 v1.3.7
- * 修复版：深色模式Toast阴影、颜色协调、相对主题色较浅颜色
+ * zxlite.js - 轻量级前端工具库 v1.3.8
+ * 修复版：原有对话框调用dialogx，对话框样式优先于页面主题
  */
 (function(global) {
     'use strict';
@@ -118,27 +118,28 @@
     }
     
     function getStyle(styleName) {
+        // 优先使用传入的样式名
         if (styleName && Z._dialogStyles[styleName]) {
             return Z._dialogStyles[styleName];
         }
+        // 其次使用自定义样式
         if (Z._customStyle) {
             return Z._customStyle;
         }
+        // 最后使用当前全局样式
         return Z._dialogStyles[Z._currentStyle] || Z._dialogStyles.light1;
     }
     
-    // 应用主题到页面所有元素
+    // 应用主题到页面所有元素（不覆盖对话框样式）
     function applyTheme(themeName, customColor) {
         var theme = Z._themes[themeName] || Z._themes.light1;
         var primaryColor = customColor || theme.primary;
         var isDark = themeName.startsWith('dark');
         
-        // 根据主题类型设置文本颜色
         var textColor = theme.text;
         var textSecColor = theme.textSec;
         var cardTextColor = theme.text;
         
-        // 计算主题色的较浅版本用于背景
         var primaryLight = isDark ? `rgba(${parseInt(primaryColor.slice(1,3),16)}, ${parseInt(primaryColor.slice(3,5),16)}, ${parseInt(primaryColor.slice(5,7),16)}, 0.15)` : `rgba(${parseInt(primaryColor.slice(1,3),16)}, ${parseInt(primaryColor.slice(3,5),16)}, ${parseInt(primaryColor.slice(5,7),16)}, 0.1)`;
         
         var styleEl = document.getElementById('zxlite-theme');
@@ -148,6 +149,7 @@
             document.head.appendChild(styleEl);
         }
         
+        // 主题样式 - 不覆盖对话框样式
         styleEl.textContent = `
             :root {
                 --zx-primary: ${primaryColor};
@@ -167,28 +169,893 @@
                 color: var(--zx-text) !important;
                 transition: all 0.3s ease;
             }
-            /* 所有文本元素 */
-            h1, h2, h3, h4, h5, h6, p, a, i, b, strong, em, span, li, label, td, th, caption, small, mark, del, ins, sub, sup, .card h3, .card p {
+            h1, h2, h3, h4, h5, h6, p, a, i, b, strong, em, span, li, label, td, th, caption, small, mark, del, ins, sub, sup, footer{
                 color: var(--zx-text) !important;
             }
-            /* 次要文本 */
-            .text-secondary, .status, .log-entry, .subtitle {
-                color: var(--zx-text-sec) !important;
-            }
-            /* 链接悬停 */
             a:hover {
                 color: var(--zx-primary) !important;
             }
-            /* 卡片和容器 */
-            .card, .zxlite-dialog, .elements-container, .demo-area, .status, .json-preview, .log-area, .header {
+            /* 页面卡片和容器 - 不覆盖对话框 */
+            .card, .elements-container, .demo-area, .status, .json-preview, .header {
                 background: var(--zx-card) !important;
                 color: ${cardTextColor} !important;
                 border-color: var(--zx-border) !important;
                 border-radius: var(--zx-radius) !important;
             }
-            /* 按钮 */
             button, .btn {
                 background: var(--zx-primary) !important;
+                color: white !important;
+                border-radius: calc(var(--zx-radius) * 0.6) !important;
+            }
+            button:hover, .btn:hover {
+                background: var(--zx-primary-dark) !important;
+            }
+            input, textarea, select {
+                background: var(--zx-card) !important;
+                color: ${cardTextColor} !important;
+                border-color: var(--zx-border) !important;
+                border-radius: calc(var(--zx-radius) * 0.6) !important;
+            }
+            input:focus, textarea:focus, select:focus {
+                outline: none;
+                border-color: var(--zx-primary) !important;
+                box-shadow: 0 0 0 2px var(--zx-primary-light);
+            }
+            .api-desc, .auto_color, .log-area { background: var(--zx-primary-light) !important; color: var(--zx-text) !important; }
+            .zxlite-toast, .zxlite-toast-top {
+                background: var(--zx-toast-bg) !important;
+                color: var(--zx-text) !important;
+                backdrop-filter: blur(10px) !important;
+                box-shadow: var(--zx-toast-shadow) !important;
+                border: 1px solid var(--zx-border) !important;
+            }
+        `;
+        Z._currentTheme = themeName;
+    }
+    
+    // 动画函数
+    function addAnimationStyle() {
+        if (document.getElementById('zx-animation-style')) return;
+        var style = document.createElement('style');
+        style.id = 'zx-animation-style';
+        style.textContent = `
+            @keyframes zx-fade-in {
+                from { opacity: 0; transform: scale(0.95); }
+                to { opacity: 1; transform: scale(1); }
+            }
+            @keyframes zx-fade-out {
+                from { opacity: 1; transform: scale(1); }
+                to { opacity: 0; transform: scale(0.95); }
+            }
+            @keyframes zx-toast-in {
+                from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+                to { opacity: 1; transform: translateX(-50%) translateY(0); }
+            }
+            @keyframes zx-toast-out {
+                from { opacity: 1; transform: translateX(-50%) translateY(0); }
+                to { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            }
+            @keyframes zx-toast-top-in {
+                from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+                to { opacity: 1; transform: translateX(-50%) translateY(0); }
+            }
+            @keyframes zx-toast-top-out {
+                from { opacity: 1; transform: translateX(-50%) translateY(0); }
+                to { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            }
+            .zx-dialog-anim {
+                animation: zx-fade-in 0.2s ease forwards;
+            }
+            .zx-dialog-anim-out {
+                animation: zx-fade-out 0.2s ease forwards;
+            }
+            .zx-toast-anim {
+                animation: zx-toast-in 0.2s ease forwards;
+            }
+            .zx-toast-anim-out {
+                animation: zx-toast-out 0.2s ease forwards;
+            }
+            .zx-toast-top-anim {
+                animation: zx-toast-top-in 0.2s ease forwards;
+            }
+            .zx-toast-top-anim-out {
+                animation: zx-toast-top-out 0.2s ease forwards;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    // 创建对话框核心（对话框样式独立于主题）
+    function createDialogCore(opts) {
+        if (Z._dialog) { 
+            if (Z._dialogAnim && Z._dialog) {
+                var oldDialog = Z._dialog.querySelector('.zxlite-dialog');
+                if (oldDialog) {
+                    oldDialog.classList.add('zx-dialog-anim-out');
+                    setTimeout(function() {
+                        if (Z._dialog && Z._dialog.parentNode) Z._dialog.remove();
+                        Z._dialog = null;
+                    }, 200);
+                } else {
+                    Z._dialog.remove();
+                    Z._dialog = null;
+                }
+            } else {
+                Z._dialog.remove();
+                Z._dialog = null;
+            }
+        }
+        
+        var title = opts.title || '';
+        var content = opts.content || '';
+        var btns = opts.btns || [];
+        var outsideClose = opts.outsideClose === true;
+        var outsideFn = opts.outsideFn || null;
+        var styleName = opts.style || null;
+        var isInput = opts.isInput === true;
+        var inputVal = opts.inputValue || '';
+        var customHtml = opts.customHtml || null;
+        
+        // 获取对话框样式（独立于主题）
+        var s = getStyle(styleName);
+        
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000;';
+        
+        var dialog = document.createElement('div');
+        dialog.className = 'zxlite-dialog';
+        if (Z._dialogAnim) dialog.classList.add('zx-dialog-anim');
+        dialog.style.cssText = 'background:' + s.bg + ';border-radius:' + s.radius + ';padding:' + s.padding + ';min-width:280px;max-width:90%;box-shadow:' + s.shadow + ';color:' + s.text + ';border:1px solid ' + s.border + ';';
+        
+        var inputEl = null;
+        
+        if (customHtml) {
+            dialog.innerHTML = customHtml;
+        } else {
+            var titleEl = document.createElement('h3');
+            titleEl.textContent = title;
+            titleEl.style.cssText = 'margin:0 0 12px 0;font-size:18px;font-weight:600;color:' + s.text + ';';
+            dialog.appendChild(titleEl);
+            
+            if (isInput) {
+                inputEl = document.createElement('input');
+                inputEl.type = 'text';
+                inputEl.value = inputVal;
+                inputEl.style.cssText = 'width:100%;padding:10px;margin:0 0 20px 0;border:1px solid ' + s.border + ';border-radius:' + s.btnRadius + ';background:' + s.bg + ';color:' + s.text + ';';
+                dialog.appendChild(inputEl);
+            } else if (content) {
+                var contentEl = document.createElement('p');
+                contentEl.textContent = content;
+                contentEl.style.cssText = 'margin:0 0 24px 0;color:' + (s.textSec || s.text) + ';line-height:1.5;font-size:14px;';
+                dialog.appendChild(contentEl);
+            }
+            
+            var btnDiv = document.createElement('div');
+            btnDiv.style.cssText = 'display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap;margin-top:0;';
+            
+            var closeDialog = function() {
+                if (Z._dialogAnim && dialog) {
+                    dialog.classList.add('zx-dialog-anim-out');
+                    setTimeout(function() {
+                        if (overlay.parentNode) overlay.remove();
+                        Z._dialog = null;
+                        if (outsideFn && typeof outsideFn === 'function') outsideFn();
+                    }, 200);
+                } else {
+                    if (overlay.parentNode) overlay.remove();
+                    Z._dialog = null;
+                    if (outsideFn && typeof outsideFn === 'function') outsideFn();
+                }
+            };
+            
+            for (var i = 0; i < btns.length; i++) {
+                var btn = btns[i];
+                var button = document.createElement('button');
+                button.textContent = btn.text;
+                var isPrimary = i === btns.length - 1;
+                if (isPrimary) {
+                    button.style.cssText = 'padding:8px 20px;min-width:80px;border:none;border-radius:' + s.btnRadius + ';cursor:pointer;font-size:14px;font-weight:500;background:' + s.btnBg + ';color:' + s.btnText + ';transition:all 0.2s;';
+                } else {
+                    button.style.cssText = 'padding:8px 20px;min-width:80px;border:none;border-radius:' + s.btnRadius + ';cursor:pointer;font-size:14px;font-weight:500;background:#f0f0f0;color:#333;border:1px solid ' + s.border + ';transition:all 0.2s;';
+                }
+                button.onclick = (function(btnData, closeFn) {
+                    return function() {
+                        closeFn();
+                        if (btnData.cb && typeof btnData.cb === 'function') {
+                            btnData.cb(inputEl ? inputEl.value : null);
+                        }
+                    };
+                })(btn, closeDialog);
+                btnDiv.appendChild(button);
+            }
+            dialog.appendChild(btnDiv);
+        }
+        
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+        Z._dialog = overlay;
+        
+        if (outsideClose) {
+            overlay.onclick = function(e) {
+                if (e.target === overlay) {
+                    if (Z._dialogAnim && dialog) {
+                        dialog.classList.add('zx-dialog-anim-out');
+                        setTimeout(function() {
+                            if (overlay.parentNode) overlay.remove();
+                            Z._dialog = null;
+                            if (outsideFn && typeof outsideFn === 'function') outsideFn();
+                        }, 200);
+                    } else {
+                        if (overlay.parentNode) overlay.remove();
+                        Z._dialog = null;
+                        if (outsideFn && typeof outsideFn === 'function') outsideFn();
+                    }
+                }
+            };
+        }
+        dialog.onclick = function(e) { e.stopPropagation(); };
+        
+        return { dialog: dialog, overlay: overlay, inputEl: inputEl };
+    }
+    
+    // ==================== DOM操作 ====================
+    Z.set = function(id, type, val) {
+        var el = getEl(id);
+        if (!el) return false;
+        if (type === 'text') el.textContent = val;
+        else if (type === 'html') el.innerHTML = val;
+        else if (type === 'val') { if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') el.value = val; else el.textContent = val; }
+        else if (type === 'attr') { for (var k in val) el.setAttribute(k, val[k]); }
+        else if (type === 'css') { for (var k in val) el.style[k] = val[k]; }
+        else if (type === 'class') el.className = val;
+        else el.setAttribute(type, val);
+        return true;
+    };
+    
+    Z.get = function(id, type) {
+        var el = getEl(id);
+        if (!el) return null;
+        if (type === 'text') return el.textContent;
+        if (type === 'html') return el.innerHTML;
+        if (type === 'val') return (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') ? el.value : el.textContent;
+        if (type === 'attr') return el.attributes;
+        if (type === 'css') return el.style;
+        return el.getAttribute(type);
+    };
+    
+    Z.new = function(pid, nid, tag, css) {
+        css = css || {};
+        var p = pid === 'base' ? document.body : getEl(pid);
+        if (!p) return false;
+        var el = document.createElement(tag);
+        el.id = nid;
+        for (var k in css) el.style[k] = css[k];
+        p.appendChild(el);
+        return true;
+    };
+    
+    Z.del = function(id) { var el = getEl(id); if (el && el.parentNode) { el.parentNode.removeChild(el); return true; } return false; };
+    Z.$ = function(sel, all) { return all ? document.querySelectorAll(sel) : document.querySelector(sel); };
+    Z.id = function(id) { return document.getElementById(id); };
+    Z.hide = function(id) { var el = getEl(id); if (el) el.style.display = 'none'; return el; };
+    Z.show = function(id) { var el = getEl(id); if (el) el.style.display = ''; return el; };
+    Z.addClass = function(id, cls) { var el = getEl(id); if (el) el.classList.add(cls); return el; };
+    Z.rmClass = function(id, cls) { var el = getEl(id); if (el) el.classList.remove(cls); return el; };
+    Z.hasClass = function(id, cls) { var el = getEl(id); return el ? el.classList.contains(cls) : false; };
+    Z.html = function(id, html) { var el = getEl(id); if (!el) return null; if (html === undefined) return el.innerHTML; el.innerHTML = html; return el; };
+    Z.text = function(id, txt) { var el = getEl(id); if (!el) return null; if (txt === undefined) return el.textContent; el.textContent = txt; return el; };
+    Z.val = function(id, v) { var el = getEl(id); if (!el) return null; if (v === undefined) { if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return el.value; return el.textContent; } if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') el.value = v; else el.textContent = v; return el; };
+    Z.css = function(id, prop, val) { var el = getEl(id); if (!el) return null; if (typeof prop === 'object') { for (var k in prop) el.style[k] = prop[k]; return el; } if (val === undefined) return getComputedStyle(el)[prop]; el.style[prop] = val; return el; };
+    Z.append = function(parent, child) { var p = getEl(parent), c = getEl(child); if (p && c) { p.appendChild(c); return true; } return false; };
+    Z.prepend = function(parent, child) { var p = getEl(parent), c = getEl(child); if (p && c) { p.insertBefore(c, p.firstChild); return true; } return false; };
+    
+    // ==================== 音频控制 ====================
+    Z.play = function(url) {
+        var id = 'a_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+        var audio = new Audio(url);
+        audio.style.display = 'none';
+        document.body.appendChild(audio);
+        Z._ap.set(id, { audio: audio, id: id });
+        audio.play().catch(function(e) { console.warn(e); });
+        return id;
+    };
+    
+    Z.pc = function(id, act) {
+        var c = Z._ap.get(id);
+        if (!c) return false;
+        var a = c.audio;
+        if (act === 'start' || act === 'continue') { a.play().catch(function(e) {}); }
+        else if (act === 'pause') { a.pause(); }
+        else if (act === 'stop') { a.pause(); a.currentTime = 0; }
+        else if (act === 'kill') { a.pause(); a.remove(); Z._ap.delete(id); }
+        else if (act === 'loop') { a.loop = true; }
+        return true;
+    };
+    
+    Z.pis = function(id) { var c = Z._ap.get(id); return c ? !c.audio.paused : false; };
+    Z.pp = function(id, t) { var c = Z._ap.get(id); if (!c) return 0; if (t !== undefined && !isNaN(t)) c.audio.currentTime = t; return c.audio.currentTime; };
+    Z.pa = function(id) { var c = Z._ap.get(id); if (!c) return 0; var dur = c.audio.duration; return isNaN(dur) ? 0 : dur; };
+    Z.pv = function(id, v) { var c = Z._ap.get(id); if (c) c.audio.volume = Math.min(1, Math.max(0, v / 100)); return true; };
+    
+    // ==================== 动画 ====================
+    Z.anim = function(id, type, dur, dir) {
+        dir = dir || 'normal';
+        var el = getEl(id);
+        if (!el) return null;
+        var cfg = Z._at[type] || Z._customAnims.get(type);
+        if (!cfg) return null;
+        for (var p in cfg.init) el.style[p] = cfg.init[p];
+        return el.animate([cfg.init, cfg.key], {
+            duration: dur || cfg.dur,
+            direction: dir === 'reverse' ? 'reverse' : 'normal',
+            fill: 'forwards',
+            easing: cfg.easing || 'ease',
+            iterations: cfg.iter || 1,
+            alternate: cfg.alt || false
+        });
+    };
+    
+    Z.addAnim = function(name, init, key, dur, easing, iter, alt) {
+        Z._customAnims.set(name, { init: init, key: key, dur: dur || 300, easing: easing || 'ease', iter: iter || 1, alt: alt || false });
+        return true;
+    };
+    
+    Z.stopAnim = function(id) { var el = getEl(id); if (el) el.getAnimations().forEach(function(a) { a.cancel(); }); return true; };
+    
+    // ==================== 页面控制 ====================
+    Z.meta = function(type, val, target) {
+        if (type === 'title') { document.title = val; return true; }
+        if (type === 'url') { if (target === 'new') window.open(val, '_blank'); else window.location.href = val; return true; }
+        if (type === 'view') { var vp = document.querySelector('meta[name="viewport"]'); if (!vp) { vp = document.createElement('meta'); vp.name = 'viewport'; document.head.appendChild(vp); } vp.content = val; return true; }
+        return false;
+    };
+    
+    Z.page = function(act) {
+        if (act === 'top') { window.scrollTo({ top: 0, behavior: 'smooth' }); return true; }
+        if (act === 'bottom') { window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); return true; }
+        if (act === 'back') { history.back(); return true; }
+        if (act === 'go') { history.forward(); return true; }
+        if (act === 'reload') { location.reload(); return true; }
+        return false;
+    };
+    
+    // ==================== 对话框 ====================
+    // 原有对话框 - 直接调用 dialogx
+    Z.dialog = function(title, content, btn1, btn2, cb1, cb2) {
+        var args = [title, content];
+        if (arguments.length >= 5 && typeof btn2 === 'function') {
+            args.push(btn1, cb1, btn2, cb2);
+        } else if (arguments.length >= 3) {
+            args.push(btn1, btn2 || cb1);
+        } else {
+            args.push('确定');
+        }
+        // 调用 dialogx
+        return Z.dialogx.apply(Z, args);
+    };
+    
+    Z.dialogx = function() {
+        var args = Array.prototype.slice.call(arguments);
+        var title = args[0] || '';
+        var content = args[1] || '';
+        var btns = [];
+        var outsideClose = false;
+        var outsideFn = null;
+        var style = null;
+        var i = 2;
+        
+        while (i < args.length) {
+            if (typeof args[i] === 'boolean') {
+                outsideClose = args[i];
+                i++;
+            } else if (typeof args[i] === 'function') {
+                outsideFn = args[i];
+                i++;
+            } else if (typeof args[i] === 'string' && (args[i] === 'light1' || args[i] === 'light2' || args[i] === 'light3' || args[i] === 'dark1' || args[i] === 'dark2' || args[i] === 'dark3')) {
+                style = args[i];
+                i++;
+            } else if (typeof args[i] === 'string') {
+                var text = args[i];
+                var cb = (i + 1 < args.length && typeof args[i + 1] === 'function') ? args[i + 1] : null;
+                btns.push({ text: text, cb: cb });
+                i += cb ? 2 : 1;
+            } else {
+                i++;
+            }
+        }
+        
+        if (btns.length === 0) btns.push({ text: '确定', cb: null });
+        return createDialogCore({ title: title, content: content, btns: btns, outsideClose: outsideClose, outsideFn: outsideFn, style: style });
+    };
+    
+    Z.dialogi = function() {
+        var args = Array.prototype.slice.call(arguments);
+        var title = args[0] || '';
+        var content = args[1] || '';
+        var btns = [];
+        var outsideClose = false;
+        var outsideFn = null;
+        var style = null;
+        var i = 2;
+        
+        while (i < args.length) {
+            if (typeof args[i] === 'boolean') {
+                outsideClose = args[i];
+                i++;
+            } else if (typeof args[i] === 'function') {
+                outsideFn = args[i];
+                i++;
+            } else if (typeof args[i] === 'string' && (args[i] === 'light1' || args[i] === 'light2' || args[i] === 'light3' || args[i] === 'dark1' || args[i] === 'dark2' || args[i] === 'dark3')) {
+                style = args[i];
+                i++;
+            } else if (typeof args[i] === 'string') {
+                var text = args[i];
+                var cb = (i + 1 < args.length && typeof args[i + 1] === 'function') ? args[i + 1] : null;
+                btns.push({ text: text, cb: cb });
+                i += cb ? 2 : 1;
+            } else {
+                i++;
+            }
+        }
+        
+        if (btns.length === 0) btns.push({ text: '确定', cb: null });
+        
+        return new Promise(function(resolve) {
+            var result = createDialogCore({ title: title, content: content, btns: btns, outsideClose: outsideClose, outsideFn: outsideFn, style: style, isInput: true });
+            var btnDiv = result.dialog.querySelector('div:last-child');
+            if (btnDiv && btnDiv.children.length > 0) {
+                var lastBtn = btnDiv.children[btnDiv.children.length - 1];
+                var oldClick = lastBtn.onclick;
+                lastBtn.onclick = function() {
+                    var val = result.inputEl ? result.inputEl.value : '';
+                    if (oldClick) oldClick();
+                    resolve(val);
+                };
+            } else {
+                resolve('');
+            }
+        });
+    };
+    
+    Z.dialogc = function(html, outsideClose, outsideFn) {
+        return createDialogCore({ customHtml: html, outsideClose: outsideClose === true, outsideFn: outsideFn || null });
+    };
+    
+    Z.dialogd = function(view, id) {
+        if (view && view.dialog) return view.dialog.querySelector('#' + id);
+        return null;
+    };
+    
+    Z.dialogs = function(style) {
+        if (typeof style === 'string' && Z._dialogStyles[style]) {
+            Z._currentStyle = style;
+            Z._customStyle = null;
+        } else if (typeof style === 'object') {
+            Z._customStyle = style;
+        } else {
+            return false;
+        }
+        return true;
+    };
+    
+    Z.dialoga = function(enable) { 
+        Z._dialogAnim = enable; 
+        return true; 
+    };
+    
+    Z.toasta = function(enable) { 
+        Z._toastAnim = enable; 
+        return true; 
+    };
+    
+    // ==================== 动态主题 ====================
+    Z.style = function(theme, color) {
+        var themeName = theme || 'light1';
+        if (color && /^#([0-9A-F]{3}){1,2}$/i.test(color)) {
+            var baseTheme = Z._themes[themeName] || Z._themes.light1;
+            var isDark = themeName.startsWith('dark');
+            var customTheme = {
+                primary: color,
+                primaryLight: isDark ? `rgba(${parseInt(color.slice(1,3),16)}, ${parseInt(color.slice(3,5),16)}, ${parseInt(color.slice(5,7),16)}, 0.15)` : `rgba(${parseInt(color.slice(1,3),16)}, ${parseInt(color.slice(3,5),16)}, ${parseInt(color.slice(5,7),16)}, 0.1)`,
+                primaryDark: baseTheme.primaryDark,
+                bg: baseTheme.bg,
+                card: baseTheme.card,
+                text: baseTheme.text,
+                textSec: baseTheme.textSec,
+                border: baseTheme.border,
+                radius: baseTheme.radius,
+                toastBg: baseTheme.toastBg,
+                toastShadow: baseTheme.toastShadow
+            };
+            var styleEl = document.getElementById('zxlite-theme');
+            if (!styleEl) {
+                styleEl = document.createElement('style');
+                styleEl.id = 'zxlite-theme';
+                document.head.appendChild(styleEl);
+            }
+            styleEl.textContent = `
+                :root {
+                    --zx-primary: ${customTheme.primary};
+                    --zx-primary-light: ${customTheme.primaryLight};
+                    --zx-primary-dark: ${customTheme.primaryDark};
+                    --zx-bg: ${customTheme.bg};
+                    --zx-card: ${customTheme.card};
+                    --zx-text: ${customTheme.text};
+                    --zx-text-sec: ${customTheme.textSec};
+                    --zx-border: ${customTheme.border};
+                    --zx-radius: ${customTheme.radius};
+                    --zx-toast-bg: ${customTheme.toastBg};
+                    --zx-toast-shadow: ${customTheme.toastShadow};
+                }
+                body { background: var(--zx-bg) !important; color: var(--zx-text) !important; transition: all 0.3s ease; }
+                h1, h2, h3, h4, h5, h6, p, a, i, b, footer, strong, em, span, li, label { color: var(--zx-text) !important; }
+                a:hover { color: var(--zx-primary) !important; }
+                .card, .elements-container, .demo-area, .status, .json-preview, .header {
+                    background: var(--zx-card) !important;
+                    color: var(--zx-text) !important;
+                    border-color: var(--zx-border) !important;
+                    border-radius: var(--zx-radius) !important;
+                }
+                button, .btn { background: var(--zx-primary) !important; color: white !important; border-radius: calc(var(--zx-radius) * 0.6) !important; }
+                button:hover, .btn:hover { background: var(--zx-primary-dark) !important; }
+                input, textarea, select { background: var(--zx-card) !important; color: var(--zx-text) !important; border-color: var(--zx-border) !important; border-radius: calc(var(--zx-radius) * 0.6) !important; }
+                .api-desc, .auto_color, .log-area { background: var(--zx-primary-light) !important; color: var(--zx-text) !important; }
+                .zxlite-toast, .zxlite-toast-top { background: var(--zx-toast-bg) !important; color: var(--zx-text) !important; backdrop-filter: blur(10px) !important; box-shadow: var(--zx-toast-shadow) !important; border: 1px solid var(--zx-border) !important; }
+            `;
+        } else {
+            applyTheme(themeName);
+        }
+        return true;
+    };
+    
+    // ==================== Toast ====================
+    Z.toast = function(msg, dur) {
+        dur = dur || 2000;
+        
+        if (Z._toastTimer) {
+            clearTimeout(Z._toastTimer);
+            Z._toastTimer = null;
+        }
+        
+        if (Z._toast) {
+            if (Z._toastAnim) {
+                Z._toast.classList.add('zx-toast-anim-out');
+                setTimeout(function() {
+                    if (Z._toast && Z._toast.parentNode) {
+                        Z._toast.remove();
+                        Z._toast = null;
+                    }
+                    showNewToast();
+                }, 200);
+            } else {
+                if (Z._toast.parentNode) Z._toast.remove();
+                Z._toast = null;
+                showNewToast();
+            }
+        } else {
+            showNewToast();
+        }
+        
+        function showNewToast() {
+            var toast = document.createElement('div');
+            toast.textContent = msg;
+            toast.className = 'zxlite-toast';
+            if (Z._toastAnim) toast.classList.add('zx-toast-anim');
+            toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:8px;font-size:14px;z-index:10001;max-width:80%;text-align:center;';
+            if (msg.length > 30) toast.style.whiteSpace = 'normal';
+            else toast.style.whiteSpace = 'nowrap';
+            document.body.appendChild(toast);
+            Z._toast = toast;
+            
+            Z._toastTimer = setTimeout(function() { 
+                if (Z._toastAnim && Z._toast) {
+                    Z._toast.classList.add('zx-toast-anim-out');
+                    setTimeout(function() {
+                        if (Z._toast && Z._toast.parentNode) {
+                            Z._toast.remove();
+                            Z._toast = null;
+                        }
+                        Z._toastTimer = null;
+                    }, 200);
+                } else {
+                    if (Z._toast && Z._toast.parentNode) {
+                        Z._toast.remove();
+                        Z._toast = null;
+                    }
+                    Z._toastTimer = null;
+                }
+            }, dur);
+        }
+        return true;
+    };
+    
+    Z.toastt = function(msg, dur) {
+        dur = dur || 2000;
+        
+        if (Z._toastTimer) {
+            clearTimeout(Z._toastTimer);
+            Z._toastTimer = null;
+        }
+        
+        if (Z._toast) {
+            if (Z._toastAnim) {
+                Z._toast.classList.add('zx-toast-top-anim-out');
+                setTimeout(function() {
+                    if (Z._toast && Z._toast.parentNode) {
+                        Z._toast.remove();
+                        Z._toast = null;
+                    }
+                    showNewToast();
+                }, 200);
+            } else {
+                if (Z._toast.parentNode) Z._toast.remove();
+                Z._toast = null;
+                showNewToast();
+            }
+        } else {
+            showNewToast();
+        }
+        
+        function showNewToast() {
+            var toast = document.createElement('div');
+            toast.textContent = msg;
+            toast.className = 'zxlite-toast-top';
+            if (Z._toastAnim) toast.classList.add('zx-toast-top-anim');
+            toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:8px;font-size:14px;z-index:10001;max-width:80%;text-align:center;';
+            if (msg.length > 30) toast.style.whiteSpace = 'normal';
+            else toast.style.whiteSpace = 'nowrap';
+            document.body.appendChild(toast);
+            Z._toast = toast;
+            
+            Z._toastTimer = setTimeout(function() { 
+                if (Z._toastAnim && Z._toast) {
+                    Z._toast.classList.add('zx-toast-top-anim-out');
+                    setTimeout(function() {
+                        if (Z._toast && Z._toast.parentNode) {
+                            Z._toast.remove();
+                            Z._toast = null;
+                        }
+                        Z._toastTimer = null;
+                    }, 200);
+                } else {
+                    if (Z._toast && Z._toast.parentNode) {
+                        Z._toast.remove();
+                        Z._toast = null;
+                    }
+                    Z._toastTimer = null;
+                }
+            }, dur);
+        }
+        return true;
+    };
+    
+    // ==================== 事件绑定 ====================
+    Z.on = function(id, ev, fn) {
+        var el = getEl(id);
+        if (!el) return false;
+        var key = (el.id || '') + '_' + ev;
+        if (Z._ev.has(key)) el.removeEventListener(ev, Z._ev.get(key));
+        el.addEventListener(ev, fn);
+        Z._ev.set(key, fn);
+        return true;
+    };
+    
+    Z.sc = function(id, ev, fn) { return Z.on(id, ev, fn); };
+    Z.ele = function(id, act) { var el = getEl(id); if (el && act === 'click') { el.click(); return true; } return false; };
+    
+    // ==================== 网络请求 ====================
+    Z.ajaxGet = function(url) { return fetch(url).then(function(r) { return r.text(); }).catch(function(e) { return ''; }); };
+    Z.ajaxPost = function(url, data) { var fd = new URLSearchParams(); for (var k in data) fd.append(k, data[k]); return fetch(url, { method: 'POST', body: fd }).then(function(r) { return r.text(); }); };
+    Z.gu = function(url) { return Z.ajaxGet(url); };
+    Z.post = function(url, data) { return Z.ajaxPost(url, data); };
+    
+    // ==================== JSON操作 ====================
+    Z.json = function(data, act, key, val) {
+        try {
+            var d = typeof data === 'string' ? JSON.parse(data) : JSON.parse(JSON.stringify(data));
+            if (act === 'edit') { if (d[key] !== undefined) d[key] = val; return d; }
+            if (act === 'add') { d[key] = val; return d; }
+            if (act === 'del') { delete d[key]; return d; }
+            if (act === 'get') return d[key];
+            if (act === 'list') return d[key];
+            return d;
+        } catch(e) { console.error(e); return null; }
+    };
+    
+    // ==================== 字符串操作 ====================
+    Z.rp = function(str, search, replace, all) { return all ? str.split(search).join(replace) : str.replace(search, replace); };
+    Z.cut = function(str, start, end) { var i = str.indexOf(start); if (i === -1) return ''; var j = str.indexOf(end, i + start.length); return j === -1 ? '' : str.substring(i + start.length, j); };
+    Z.mk = function(str) { try { return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(m, p) { return String.fromCharCode(parseInt(p, 16)); })); } catch(e) { return btoa(str); } };
+    Z.rk = function(str) { try { return decodeURIComponent(atob(str).split('').map(function(c) { return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2); }).join('')); } catch(e) { return atob(str); } };
+    Z.upper = function(str) { return str.toUpperCase(); };
+    Z.lower = function(str) { return str.toLowerCase(); };
+    Z.bigger = function(str) { return str.toUpperCase(); };
+    Z.slower = function(str) { return str.toLowerCase(); };
+    Z.trim = function(str) { return str.trim(); };
+    Z.strcm = function(str) { return str.trim(); };
+    Z.len = function(str) { return str.length; };
+    Z.long = function(str) { return str.length; };
+    Z.copy = function(text) { var ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0;left:-9999px'; document.body.appendChild(ta); ta.select(); var s = document.execCommand('copy'); ta.remove(); return s; };
+    
+    // ==================== 时间 ====================
+    Z.time = function(type) {
+        var d = new Date(), y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), day = String(d.getDate()).padStart(2, '0');
+        var h = String(d.getHours()).padStart(2, '0'), min = String(d.getMinutes()).padStart(2, '0'), s = String(d.getSeconds()).padStart(2, '0');
+        if (type === 0) return y + '-' + m + '-' + day + ' ' + h + ':' + min + ':' + s;
+        if (type === 1) return y + '/' + m + '/' + day + ' ' + h + ':' + min + ':' + s;
+        if (type === 2) return y + '-' + m + '-' + day;
+        if (type === 3) return h + ':' + min + ':' + s;
+        if (type === 4) return Date.now();
+        if (type === 5) return y + '年' + m + '月' + day + '日 ' + h + ':' + min + ':' + s;
+        return y + '-' + m + '-' + day + ' ' + h + ':' + min + ':' + s;
+    };
+    Z.now = function() { return Date.now(); };
+    
+    // ==================== 随机数 ====================
+    Z.rand = function(min, max, dec) { return dec ? min + Math.random() * (max - min) : Math.floor(min + Math.random() * (max - min + 1)); };
+    Z.uuid = function() { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8); return v.toString(16); }); };
+    Z.randomStr = function(len) { return Math.random().toString(36).substr(2, len); };
+    
+    // ==================== 计算 ====================
+    Z.calc = function(expr, rem) {
+        try {
+            var ex = expr.replace(/\b(abs|sin|cos|tan|sqrt|pow|exp|log|floor|ceil|round)\b/g, 'Math.$1');
+            ex = ex.replace(/\bPI\b/g, 'Math.PI').replace(/\bE\b/g, 'Math.E');
+            var r = Function('"use strict";return (' + ex + ')')();
+            return rem ? r % 1 : r;
+        } catch(e) { console.error(e); return NaN; }
+    };
+    
+    // ==================== 渐变 ====================
+    Z.bm = function(dir, id, colors) {
+        var el = getEl(id);
+        if (!el) return false;
+        var dirs = { topbottom: 'to bottom', leftright: 'to right', TL_BR: 'to bottom right', rightleft: 'to left', bottomtop: 'to top' };
+        var d = dirs[dir] || 'to bottom';
+        el.style.background = 'linear-gradient(' + d + ', ' + colors.split('|').join(', ') + ')';
+        return true;
+    };
+    
+    // ==================== 延迟 ====================
+    Z.wait = function(ms) { return new Promise(function(r) { setTimeout(r, ms); }); };
+    Z.pause = function(ms) { return new Promise(function(r) { setTimeout(r, ms); }); };
+    Z.delay = function(ms) { return new Promise(function(r) { setTimeout(r, ms); }); };
+    Z.sleep = function(ms) { return new Promise(function(r) { setTimeout(r, ms); }); };
+    
+    // ==================== 元素获取 ====================
+    Z.gui = function(type, val, all) {
+        if (type === 'class') return all ? document.getElementsByClassName(val) : document.getElementsByClassName(val)[0];
+        if (type === 'element') return all ? document.getElementsByTagName(val) : document.getElementsByTagName(val)[0];
+        if (type === 'selector') return all ? document.querySelectorAll(val) : document.querySelector(val);
+        if (type === 'id') return document.getElementById(val);
+        return null;
+    };
+    
+    // ==================== 全局更新 ====================
+    Z.update = function() { var event = new Event('zxupdate'); window.dispatchEvent(event); return true; };
+    
+    // ==================== 图片处理 ====================
+    Z.rotate = function(img, angle) {
+        return new Promise(function(resolve, reject) {
+            var image = typeof img === 'string' ? new Image() : img;
+            var onLoad = function() {
+                var canvas = document.createElement('canvas');
+                var ctx = canvas.getContext('2d');
+                var rad = angle * Math.PI / 180;
+                var sin = Math.abs(Math.sin(rad)), cos = Math.abs(Math.cos(rad));
+                var w = image.width, h = image.height;
+                canvas.width = w * cos + h * sin;
+                canvas.height = w * sin + h * cos;
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.rotate(rad);
+                ctx.drawImage(image, -w / 2, -h / 2, w, h);
+                resolve(canvas.toDataURL());
+            };
+            if (typeof img === 'string') {
+                image.crossOrigin = 'Anonymous';
+                image.onload = onLoad;
+                image.onerror = reject;
+                image.src = img;
+            } else if (image.complete) {
+                onLoad();
+            } else {
+                image.onload = onLoad;
+                image.onerror = reject;
+            }
+        });
+    };
+    
+    Z.crop = function(img, sx, ex, sy, ey) {
+        return new Promise(function(resolve, reject) {
+            var image = typeof img === 'string' ? new Image() : img;
+            var onLoad = function() {
+                var canvas = document.createElement('canvas');
+                var ctx = canvas.getContext('2d');
+                var w = ex - sx;
+                var h = ey - sy;
+                canvas.width = w;
+                canvas.height = h;
+                ctx.drawImage(image, sx, sy, w, h, 0, 0, w, h);
+                resolve(canvas.toDataURL());
+            };
+            if (typeof img === 'string') {
+                image.crossOrigin = 'Anonymous';
+                image.onload = onLoad;
+                image.onerror = reject;
+                image.src = img;
+            } else if (image.complete) {
+                onLoad();
+            } else {
+                image.onload = onLoad;
+                image.onerror = reject;
+            }
+        });
+    };
+    
+    Z.izz = function(img, angle) { return Z.rotate(img, angle); };
+    Z.czz = function(img, sx, ex, sy, ey) { return Z.crop(img, sx, ex, sy, ey); };
+    
+    // ==================== 其他工具 ====================
+    Z.log = function(msg) { console.log(msg); return msg; };
+    Z.print = function(msg) { console.log(msg); return msg; };
+    Z.edit = function(enable) { document.body.contentEditable = enable ? 'true' : 'false'; return true; };
+    Z.dl = function(path) { var a = document.createElement('a'); a.href = path; a.download = ''; document.body.appendChild(a); a.click(); document.body.removeChild(a); return true; };
+    Z.sdl = function(path) { return Z.dl(path); };
+    Z.ua = function() { return navigator.userAgent; };
+    Z.url = function() { return window.location.href; };
+    Z.host = function() { return window.location.host; };
+    Z.path = function() { return window.location.pathname; };
+    Z.data = function(type) { if (type === 'ua') return navigator.userAgent; if (type === 'url') return window.location.href; return ''; };
+    Z.store = function(k, v) { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); return v; };
+    Z.clear = function() { localStorage.clear(); return true; };
+    Z.rmItem = function(k) { localStorage.removeItem(k); return true; };
+    Z.cookie = function(k, v, days) {
+        if (v === undefined) { var c = document.cookie.match('(^|;)\\s*' + k + '\\s*=\\s*([^;]+)'); return c ? c.pop() : null; }
+        var exp = ''; if (days) { var d = new Date(); d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000); exp = '; expires=' + d.toUTCString(); }
+        document.cookie = k + '=' + (v || '') + exp + '; path=/'; return v;
+    };
+    Z.isMobile = function() { return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent); };
+    Z.isPC = function() { return !Z.isMobile(); };
+    Z.isIOS = function() { return /iPad|iPhone|iPod/.test(navigator.userAgent); };
+    Z.isAndroid = function() { return /Android/.test(navigator.userAgent); };
+    Z.full = function() { var e = document.documentElement; if (e.requestFullscreen) e.requestFullscreen(); return true; };
+    Z.exitFull = function() { if (document.exitFullscreen) document.exitFullscreen(); return true; };
+    Z.isFull = function() { return !!document.fullscreenElement; };
+    Z.scrollTo = function(x, y) { window.scrollTo({ top: y, left: x, behavior: 'smooth' }); return true; };
+    Z.scrollX = function() { return window.scrollX; };
+    Z.scrollY = function() { return window.scrollY; };
+    Z.debounce = function(fn, delay) { var t; return function() { var args = arguments; clearTimeout(t); t = setTimeout(function() { fn.apply(null, args); }, delay); }; };
+    Z.throttle = function(fn, delay) { var last = 0; return function() { var now = Date.now(); if (now - last >= delay) { last = now; fn.apply(null, arguments); } }; };
+    Z.cloneDeep = function(obj) { return JSON.parse(JSON.stringify(obj)); };
+    Z.deepCopy = function(obj) { return JSON.parse(JSON.stringify(obj)); };
+    Z.rgb2hex = function(r, g, b) { return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1); };
+    Z.hex2rgb = function(hex) { var h = parseInt(hex.slice(1), 16); return { r: h >> 16, g: (h >> 8) & 255, b: h & 255 }; };
+    Z.getParam = function(name) { var url = new URL(window.location.href); return url.searchParams.get(name); };
+    Z.setParam = function(name, val) { var url = new URL(window.location.href); url.searchParams.set(name, val); history.pushState({}, '', url); return true; };
+    Z.delParam = function(name) { var url = new URL(window.location.href); url.searchParams.delete(name); history.pushState({}, '', url); return true; };
+    Z.isStr = function(v) { return typeof v === 'string'; };
+    Z.isNum = function(v) { return typeof v === 'number' && !isNaN(v); };
+    Z.isArr = function(v) { return Array.isArray(v); };
+    Z.isObj = function(v) { return typeof v === 'object' && v !== null && !Array.isArray(v); };
+    Z.isFn = function(v) { return typeof v === 'function'; };
+    Z.isEl = function(v) { return v && v.nodeType === 1; };
+    Z.px = function(v) { return v + 'px'; };
+    Z.em = function(v) { return v + 'em'; };
+    Z.cvd = function(v, m) { if (m === 1) return v + 'px'; if (m === 2) return v + 'em'; return v.toString(); };
+    Z.stop = function() { throw new Error('Execution stopped'); };
+    Z.break = function() { throw new Error('Execution stopped'); };
+    Z.load = function(url) { return new Promise(function(res, rej) { var s = document.createElement('script'); s.src = url; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); };
+    
+    // 初始化动画样式和默认主题
+    addAnimationStyle();
+    //applyTheme('light1');
+    
+    global.zxlite = Z;
+    global.zxd = Z;
+    
+})(typeof window !== 'undefined' ? window : this);
+
+if (typeof console !== 'undefined') console.log('zxlite.js v1.3.8 loaded - 原有对话框调用dialogx，对话框样式优先');ground: var(--zx-primary) !important;
                 color: white !important;
                 border-radius: calc(var(--zx-radius) * 0.6) !important;
                 transition: all 0.2s ease;
