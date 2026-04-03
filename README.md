@@ -1,25 +1,20 @@
-# Zxlite
-让web开发更加简单，简化javascript
-
 # zxlite.js 完整 API 参考手册
 
-**版本**: v1.2.0
+**版本**: v1.3.0
 
 ## 概述
 
-zxlite.js 是一个轻量级前端工具库，提供 DOM 操作、音频控制、动画效果、数据处理、网络请求等完整功能。所有 API 通过 `zxd` 对象调用，函数名简洁（1-10 个字符）。
+zxlite.js 是一个轻量级前端工具库，提供 DOM 操作、音频控制、动画效果、对话框扩展、动态主题、数据处理、网络请求等完整功能。所有 API 通过 `zxd` 对象调用，函数名简洁（1-10 个字符）。
 
 ## 引入方式
 
 ```html
 <script src="https://res.viqu.com/web/js/zxlite.js"></script>
 ```
-
-[看看效果↗](https://res.viqu.com/web/test/zxlite.html)
-
+[测试一下↗](https://res.viqu.com/web/test/zxlite.html)
 ---
 
-一、DOM 操作（16 个）
+一、DOM 操作（30+ 个）
 
 方法 说明
 zxd.set(id, type, value) 设置元素属性，类型：text/html/val/attr/css/class
@@ -43,6 +38,7 @@ zxd.parent/children/sibling(el, next) 遍历元素
 zxd.append/prepend/before/after(parent, child) 插入元素
 zxd.empty/clone(el, deep) 清空/克隆元素
 zxd.width/height(el, val) 获取/设置宽高
+zxd.gui(type, value, all) 获取元素，type: class/id/element/selector
 
 ---
 
@@ -66,29 +62,71 @@ zxd.addAnim(name, init, key, dur, easing, iter, alt) 添加自定义动画
 zxd.stopAnim(id) 停止元素上的所有动画
 
 预设动画类型：
-基础：fadeIn, fadeOut
-滑动：slideUp, slideDown, slideLeft, slideRight
-缩放：zoomIn, zoomOut, zoomInX, zoomInY
-旋转：rotateIn, rotateOut, rotateInLeft, rotateInRight
-弹跳：bounce, bounceIn, bounceOut
-震动：shake, shakeX, shakeY
-翻转：flip, flipX, flipInX, flipInY
-脉冲：pulse, pulseInfinite
-摇摆：swing, wobble
-闪烁：flash, blink
-特效：rubberBand, dropIn, dropOut, rollIn, rollOut, glow, spinPulse
+
+· 基础：fadeIn, fadeOut
+· 滑动：slideUp, slideDown, slideLeft, slideRight
+· 缩放：zoomIn, zoomOut, zoomInX, zoomInY
+· 旋转：rotateIn, rotateOut, rotateInLeft, rotateInRight
+· 弹跳：bounce, bounceIn, bounceOut
+· 震动：shake, shakeX, shakeY
+· 翻转：flip, flipX, flipInX, flipInY
+· 脉冲：pulse, pulseInfinite
+· 摇摆：swing, wobble
+· 闪烁：flash, blink
+· 特效：rubberBand, dropIn, dropOut, rollIn, rollOut, glow, spinPulse
 
 ---
 
-四、对话框与提示（2 个）
+四、对话框扩展（v1.3.0 新增）
+
+方法 说明
+zxd.dialogx(标题,内容,按钮1,回调1,按钮2,回调2,按钮3,回调3,外面关闭,外面回调,样式) 扩展对话框，支持1-3个按钮
+zxd.dialogi(标题,内容,按钮1,回调1,按钮2,回调2,外面关闭,外面回调,样式) 输入框对话框，返回 Promise 获取输入值
+zxd.dialogc(html内容,外面关闭,回调) 自定义布局对话框，支持 HTML 字符串或 $文件路径
+zxd.dialogd(view, "元素id") 获取自定义对话框内元素
+zxd.dialogs(css) 自定义对话框全局样式
+zxd.dialoga(true/false) 开启/关闭对话框动画
+zxd.toasta(true/false) 开启/关闭 Toast 动画
+
+6 种内置对话框样式：
+
+· 亮色：light1, light2, light3
+· 暗色：dark1, dark2, dark3
+
+使用示例：
+
+```javascript
+// 单按钮对话框
+zxd.dialogx('提示', '操作成功', '确定', () => console.log('确定'));
+
+// 双按钮对话框
+zxd.dialogx('确认', '确定删除吗？', '取消', () => console.log('取消'), '确认', () => console.log('删除'));
+
+// 三按钮对话框
+zxd.dialogx('选择', '请选择', '选项A', () => console.log('A'), '选项B', () => console.log('B'), '选项C', () => console.log('C'));
+
+// 输入框对话框
+let name = await zxd.dialogi('输入', '请输入姓名:', '确定');
+console.log('输入:', name);
+
+// 自定义布局
+let view = zxd.dialogc('<div><input id="myInput"><button id="myBtn">提交</button></div>', true);
+let btn = zxd.dialogd(view, 'myBtn');
+btn.onclick = () => { console.log('提交'); };
+```
+
+---
+
+五、对话框与提示（原有）
 
 方法 说明
 zxd.dialog(title, content, btn1, btn2, cb1, cb2) 显示对话框（点击外面不会关闭）
-zxd.toast(message, duration) 显示提示消息
+zxd.toast(message, duration) 底部提示消息
+zxd.toastt(message, duration) 顶部提示消息（v1.3.0 新增）
 
 ---
 
-五、页面控制（5 个）
+六、页面控制（5 个）
 
 方法 说明
 zxd.meta(type, value, target) 页面元数据操作：title/url/view
@@ -99,23 +137,43 @@ zxd.scrollX/scrollY() 获取滚动位置
 
 ---
 
-六、JSON 数据处理（1 个）
+七、动态主题（v1.3.0 新增）
+
+方法 说明
+zxd.style(主题名, 颜色) 设置全局主题，主题名：light1/light2/light3/dark1/dark2/dark3
+
+使用示例：
+
+```javascript
+// 设置亮色主题
+zxd.style('light1', '#007aff');
+
+// 设置暗色主题
+zxd.style('dark1', '#89b4fa');
+
+// 自定义颜色（自动生成 Material You 风格配色）
+zxd.style('light1', '#F87B40');
+```
+
+---
+
+八、JSON 数据处理（1 个）
 
 方法 说明
 zxd.json(data, action, key, value) JSON 操作：edit/add/del/get/list
 
 ---
 
-七、网络请求（3 个）
+九、网络请求（3 个）
 
 方法 说明
 zxd.ajaxGet(url) GET 请求，返回 Promise
 zxd.ajaxPost(url, data) POST 请求，返回 Promise
-zxd.gu(url) 获取网页内容（同 get）
+zxd.gu(url) 获取网页内容（同 ajaxGet）
 
 ---
 
-八、事件绑定（3 个）
+十、事件绑定（3 个）
 
 方法 说明
 zxd.on(id, event, callback) 绑定事件
@@ -124,7 +182,7 @@ zxd.ele(id, action) 触发事件
 
 ---
 
-九、字符串操作（12 个）
+十一、字符串操作（12 个）
 
 方法 说明
 zxd.rp(str, search, replace, all) 字符串替换
@@ -142,7 +200,7 @@ zxd.escape/unescape(str) HTML 转义/反转义
 
 ---
 
-十、时间与随机数（6 个）
+十二、时间与随机数（6 个）
 
 方法 说明
 zxd.time(type) 获取时间，type 0-5 对应不同格式
@@ -152,23 +210,32 @@ zxd.rand(min, max, decimal) 随机数
 zxd.uuid() 生成 UUID
 zxd.randomStr(len) 生成随机字符串
 
+time() 格式说明：
+
+· 0：2024-01-01 12:30:45
+· 1：2024/01/01 12:30:45
+· 2：2024-01-01
+· 3：12:30:45
+· 4：时间戳（毫秒）
+· 5：2024年01月01日 12:30:45
+
 ---
 
-十一、数学计算（1 个）
+十三、数学计算（1 个）
 
 方法 说明
-zxd.calc(expression, remainderOnly) 数学表达式计算
+zxd.calc(expression, remainderOnly) 数学表达式计算，支持 abs/sin/cos/tan/sqrt 等
 
 ---
 
-十二、渐变背景（1 个）
+十四、渐变背景（1 个）
 
 方法 说明
-zxd.bm(direction, id, colors) 设置渐变背景
+zxd.bm(direction, id, colors) 设置渐变背景，方向：topbottom/leftright/TL_BR/rightleft/bottomtop
 
 ---
 
-十三、存储（4 个）
+十五、存储（4 个）
 
 方法 说明
 zxd.store(key, value) localStorage 操作
@@ -178,7 +245,7 @@ zxd.cookie(key, value, days) Cookie 操作
 
 ---
 
-十四、设备与浏览器信息（8 个）
+十六、设备与浏览器信息（8 个）
 
 方法 说明
 zxd.ua() 获取 UserAgent
@@ -192,7 +259,7 @@ zxd.isAndroid() 是否安卓设备
 
 ---
 
-十五、URL 参数操作（3 个）
+十七、URL 参数操作（3 个）
 
 方法 说明
 zxd.getParam(name) 获取 URL 参数
@@ -201,7 +268,7 @@ zxd.delParam(name) 删除 URL 参数
 
 ---
 
-十六、图片处理（2 个）
+十八、图片处理（2 个）
 
 方法 说明
 zxd.rotate(img, angle) 旋转图片，返回 Promise，返回 DataURL
@@ -209,7 +276,7 @@ zxd.crop(img, sx, ex, sy, ey) 裁剪图片，返回 Promise，返回 DataURL
 
 ---
 
-十七、其他工具函数（20 个）
+十九、其他工具函数（20+ 个）
 
 方法 说明
 zxd.wait/pause/delay/sleep(ms) 延迟执行，返回 Promise
@@ -225,19 +292,24 @@ zxd.debounce(fn, delay) 防抖函数
 zxd.throttle(fn, delay) 节流函数
 zxd.rgb2hex(r,g,b) / zxd.hex2rgb(hex) 颜色转换
 zxd.stop/break() 强制停止 JS 执行
+zxd.update() 触发全局更新事件（v1.3.0 新增）
 
 ---
 
 完整示例代码
 
 ```javascript
-// DOM 操作
+// ========== DOM 操作 ==========
 zxd.set('demo', 'text', 'Hello World');
 var text = zxd.get('demo', 'text');
 zxd.new('base', 'newBox', 'div', {color:'red',padding:'10px'});
 zxd.del('newBox');
 
-// 音频控制
+// 获取元素
+var els = zxd.gui('class', 'card', true);
+var el = zxd.gui('id', 'demo');
+
+// ========== 音频控制 ==========
 var ctrl = zxd.play('music.mp3');
 zxd.pc(ctrl, 'pause');
 zxd.pc(ctrl, 'continue');
@@ -247,77 +319,101 @@ var progress = zxd.pp(ctrl);
 var duration = zxd.pa(ctrl);
 zxd.pv(ctrl, 50);
 
-// 动画
+// ========== 动画 ==========
 zxd.anim('box', 'bounce', 500);
 zxd.addAnim('custom', {opacity:0}, {opacity:1}, 300, 'ease', 1);
 zxd.anim('box', 'custom', 300);
 
-// 对话框
-zxd.dialog('提示', '确定删除?', '取消', '确认', 
-    () => console.log('取消'), 
-    () => console.log('确认')
-);
-zxd.toast('操作成功', 2000);
+// ========== 对话框扩展 (v1.3.0) ==========
+// 单按钮
+zxd.dialogx('提示', '操作成功', '确定', () => console.log('确定'));
 
-// 页面控制
+// 双按钮
+zxd.dialogx('确认', '确定删除吗？', '取消', () => console.log('取消'), '确认', () => console.log('删除'));
+
+// 三按钮
+zxd.dialogx('选择', '请选择', 'A', () => console.log('A'), 'B', () => console.log('B'), 'C', () => console.log('C'));
+
+// 输入框对话框
+let name = await zxd.dialogi('输入', '请输入姓名:', '确定');
+console.log('输入:', name);
+
+// 自定义布局
+let view = zxd.dialogc('<div><input id="myInput"><button id="myBtn">提交</button></div>', true);
+let btn = zxd.dialogd(view, 'myBtn');
+btn.onclick = () => { console.log('提交'); };
+
+// 6种样式
+zxd.dialogx('样式测试', '亮色样式1', '确定', null, false, null, { bg: '#fff', text: '#333', btnBg: '#007aff' });
+
+// ========== 动态主题 (v1.3.0) ==========
+zxd.style('light1', '#007aff');
+zxd.style('dark1', '#89b4fa');
+
+// ========== Toast ==========
+zxd.toast('底部提示', 2000);
+zxd.toastt('顶部提示', 2000);
+
+// ========== 页面控制 ==========
 zxd.meta('title', '新标题');
 zxd.page('top');
 zxd.full();
 
-// JSON 操作
+// ========== JSON 操作 ==========
 var data = {name:'张三', age:18};
 data = zxd.json(data, 'add', 'city', '北京');
 var age = zxd.json(data, 'get', 'age');
 
-// 网络请求
-zxd.get('https://api.example.com').then(html => console.log(html));
-zxd.post('https://api.example.com', {name:'张三'}).then(res => {});
+// ========== 网络请求 ==========
+zxd.ajaxGet('https://api.example.com').then(html => console.log(html));
+zxd.ajaxPost('https://api.example.com', {name:'张三'}).then(res => {});
 
-// 事件绑定
+// ========== 事件绑定 ==========
 zxd.on('btn', 'click', () => alert('clicked'));
 zxd.ele('btn', 'click');
 
-// 字符串操作
+// ========== 字符串操作 ==========
 var result = zxd.rp('abc abc', 'a', 'x', true);
 var base64 = zxd.mk('Hello');
 var decoded = zxd.rk(base64);
 var upper = zxd.upper('hello');
 
-// 时间
+// ========== 时间 ==========
 var time = zxd.time(0);
 var timestamp = zxd.now();
 
-// 随机数
+// ========== 随机数 ==========
 var num = zxd.rand(1, 100, false);
 var uuid = zxd.uuid();
 
-// 计算
+// ========== 计算 ==========
 var calc = zxd.calc('abs(-5) + sin(0.5) * 10');
 
-// 渐变
+// ========== 渐变 ==========
 zxd.bm('topbottom', 'box', '#ff0000|#00ff00');
 
-// 存储
+// ========== 存储 ==========
 zxd.store('name', '张三');
 var name = zxd.store('name');
 zxd.cookie('token', 'abc123', 7);
 
-// 设备判断
+// ========== 设备判断 ==========
 if (zxd.isMobile()) console.log('手机端');
 
-// URL 参数
+// ========== URL 参数 ==========
 var id = zxd.getParam('id');
 zxd.setParam('page', '2');
 
-// 图片处理
+// ========== 图片处理 ==========
 zxd.rotate('image.jpg', 90).then(dataUrl => {});
 zxd.crop('image.jpg', 0, 100, 0, 100).then(dataUrl => {});
 
-// 工具函数
+// ========== 工具函数 ==========
 await zxd.wait(1000);
 zxd.copy('复制内容');
 zxd.edit(true);
 zxd.dl('/file.pdf');
+zxd.update(); // 触发全局更新
 
 // 防抖节流
 var fn = zxd.debounce(() => console.log('执行'), 500);
@@ -339,14 +435,18 @@ var copy = zxd.cloneDeep({a:1,b:{c:2}});
 2. 音频播放需要用户交互，首次播放可能需要点击页面
 3. 动画使用 Web Animations API，兼容现代浏览器
 4. 网络请求需要服务器支持 CORS
-5. 对话框点击外面不会关闭（设计如此）
+5. 对话框点击外面不会关闭（设计如此，可通过参数配置）
 6. 复制功能优先使用 Clipboard API，自动降级
 7. 所有延迟方法返回 Promise，可使用 async/await
+8. 动态主题会修改页面全局样式，可通过 zxd.style() 随时切换
 
 ---
 
 版本历史
 
+· v1.3.0 - 新增 dialogx/dialogi/dialogc、6种对话框样式、动态主题、顶部Toast、gui元素获取、update全局更新、动画开关
 · v1.2.0 - 新增 30+ 动画、完整 DOM 操作、音频 continue、pis 方法、自定义动画
 · v1.1.0 - 新增 60+ 工具函数
 · v1.0.0 - 初始版本
+
+```
