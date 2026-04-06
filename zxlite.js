@@ -68,6 +68,11 @@
             image.src = src;
         });
     }
+
+    function cloneData(value) {
+        if (value === undefined) return undefined;
+        return JSON.parse(JSON.stringify(value));
+    }
     
     // ==================== DOM操作核心 ====================
     
@@ -607,7 +612,7 @@
     
     Z.json = function(data, act, key, val) {
         try {
-            var d = typeof data === 'string' ? JSON.parse(data) : JSON.parse(JSON.stringify(data));
+            var d = typeof data === 'string' ? JSON.parse(data) : cloneData(data);
             if (act === 'edit') {
                 if (d[key] !== undefined) d[key] = val;
                 return d;
@@ -624,7 +629,9 @@
                 return d[key];
             }
             if (act === 'list') {
-                return d[key];
+                if (Array.isArray(d)) return d.slice();
+                if (d && typeof d === 'object') return Object.keys(d);
+                return [];
             }
             return d;
         } catch(e) {
@@ -968,15 +975,15 @@
     };
     
     Z.cloneDeep = function(obj) {
-        return JSON.parse(JSON.stringify(obj));
+        return cloneData(obj);
     };
     
     Z.deepCopy = function(obj) {
-        return JSON.parse(JSON.stringify(obj));
+        return cloneData(obj);
     };
 
     Z.copyDeep = function(obj) {
-        return JSON.parse(JSON.stringify(obj));
+        return cloneData(obj);
     };
     
     Z.rgb2hex = function(r, g, b) {

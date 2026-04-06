@@ -94,6 +94,10 @@
                 zxd.text('box', 'hello');
                 test('text/get', zxd.get('box', 'text') === 'hello', zxd.get('box', 'text'));
 
+                zxd.set('box', 'html', '<b>world</b>');
+                test('set/get html', zxd.get('box', 'html') === '<b>world</b>', zxd.get('box', 'html'));
+                zxd.text('box', 'hello');
+
                 zxd.attr('box', 'title', 'demo-box');
                 test('attr/get', zxd.attr('box', 'title') === 'demo-box', zxd.attr('box', 'title'));
 
@@ -110,6 +114,11 @@
                 zxd.height('box', 50);
                 test('width set', zxd.id('box').style.width === '150px', zxd.id('box').style.width);
                 test('height set', zxd.id('box').style.height === '50px', zxd.id('box').style.height);
+                test('width get', Math.round(zxd.width('box')) === 150, String(zxd.width('box')));
+                test('height get', Math.round(zxd.height('box')) === 50, String(zxd.height('box')));
+
+                zxd.css('box', { color: 'rgb(12, 34, 56)', marginTop: '8px' });
+                test('css set/get', zxd.css('box', 'marginTop') === '8px', zxd.css('box', 'marginTop'));
 
                 var clone = zxd.clone('box');
                 clone.id = 'box-clone';
@@ -117,14 +126,62 @@
                 test('after + sibling', zxd.sibling('box', true).id === 'box-clone', zxd.sibling('box', true).id);
                 test('parent/children', zxd.parent('box').tagName === 'BODY' && zxd.children(document.body).length >= 2, 'children=' + zxd.children(document.body).length);
 
+                zxd.new('base', 'insert-target', 'div', {});
+                zxd.new('base', 'insert-child', 'span', {});
+                zxd.text('insert-child', 'child');
+                test('before', zxd.before('insert-target', 'insert-child') === true && zxd.id('insert-target').previousElementSibling.id === 'insert-child', zxd.id('insert-target').previousElementSibling.id);
+                test('append', zxd.append('box', 'insert-child') === true && zxd.id('box').lastElementChild.id === 'insert-child', zxd.id('box').lastElementChild.id);
+                test('prepend', zxd.prepend('box', 'insert-child') === true && zxd.id('box').firstElementChild.id === 'insert-child', zxd.id('box').firstElementChild.id);
+
                 zxd.empty('box-clone');
                 test('empty', zxd.html('box-clone') === '', zxd.html('box-clone'));
 
+                var edited = zxd.json({ name: '张三', age: 18 }, 'edit', 'age', 20);
+                var added = zxd.json({ name: '张三' }, 'add', 'city', '北京');
+                var deleted = zxd.json({ name: '张三', age: 18 }, 'del', 'age');
+                var listed = zxd.json({ name: '张三', age: 18 }, 'list');
+                test('json edit', edited.age === 20, JSON.stringify(edited));
+                test('json add', added.city === '北京', JSON.stringify(added));
+                test('json del', deleted.age === undefined, JSON.stringify(deleted));
+                test('json get', zxd.json({ name: '张三', age: 18 }, 'get', 'age') === 18, String(zxd.json({ name: '张三', age: 18 }, 'get', 'age')));
+                test('json list', Array.isArray(listed) && listed.join(',') === 'name,age', listed.join(','));
+
+                test('rp all', zxd.rp('abc abc', 'a', 'x', true) === 'xbc xbc', zxd.rp('abc abc', 'a', 'x', true));
+                test('cut', zxd.cut('foo[bar]baz', '[', ']') === 'bar', zxd.cut('foo[bar]baz', '[', ']'));
+                test('mk/rk', zxd.rk(zxd.mk('你好 zxlite')) === '你好 zxlite', zxd.mk('你好 zxlite'));
                 test('substr/ctt', zxd.substr('abcdef', 2, 3) === 'cde' && zxd.ctt('abcdef', 1, 2) === 'bc', zxd.substr('abcdef', 2, 3));
                 test('indexOf/gtt', zxd.indexOf('abcdef', 'd') === 3 && zxd.gtt('abcdef', 'e') === 4, String(zxd.indexOf('abcdef', 'd')));
                 test('ue/ud', zxd.ud(zxd.ue('测试 空格')) === '测试 空格', zxd.ue('测试 空格'));
                 test('escape/unescape', zxd.unescape(zxd.escape('<b>x</b>')) === '<b>x</b>', zxd.escape('<b>x</b>'));
                 test('date', Object.prototype.toString.call(zxd.date()) === '[object Date]', zxd.date().toISOString());
+                test('time format', /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(zxd.time(0)), zxd.time(0));
+                test('now', typeof zxd.now() === 'number', String(zxd.now()));
+
+                var randInt = zxd.rand(1, 3, false);
+                test('rand integer', randInt >= 1 && randInt <= 3, String(randInt));
+                test('uuid', /^[0-9a-f-]{36}$/.test(zxd.uuid()), zxd.uuid());
+
+                var randomStr = zxd.randomStr(8);
+                test('randomStr', randomStr.length === 8, randomStr);
+                test('calc', zxd.calc('abs(-5) + 2') === 7, String(zxd.calc('abs(-5) + 2')));
+                test('deep copy aliases', zxd.cloneDeep({ a: 1 }).a === 1 && zxd.deepCopy({ b: 2 }).b === 2 && zxd.copyDeep({ c: 3 }).c === 3, 'clone aliases ok');
+                test('rgb/hex', zxd.rgb2hex(255, 0, 16) === '#ff0010' && zxd.hex2rgb('#ff0010').b === 16, JSON.stringify(zxd.hex2rgb('#ff0010')));
+
+                zxd.store('smoke-key', 'smoke-value');
+                test('store get', zxd.store('smoke-key') === 'smoke-value', zxd.store('smoke-key'));
+                zxd.rmItem('smoke-key');
+                test('store remove', zxd.store('smoke-key') === null, String(zxd.store('smoke-key')));
+
+                zxd.cookie('smoke-cookie', 'cookie-value', 1);
+                test('cookie set/get', zxd.cookie('smoke-cookie') === 'cookie-value', zxd.cookie('smoke-cookie'));
+
+                zxd.setParam('smoke', '1');
+                test('get/set param', zxd.getParam('smoke') === '1', String(zxd.getParam('smoke')));
+                zxd.delParam('smoke');
+                test('del param', zxd.getParam('smoke') === null, String(zxd.getParam('smoke')));
+
+                zxd.bm('toright', 'box', '#111111|#222222');
+                test('bm', zxd.id('box').style.backgroundImage.indexOf('linear-gradient') === 0, zxd.id('box').style.backgroundImage);
 
                 var svg = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
                     "<svg xmlns='http://www.w3.org/2000/svg' width='40' height='20'><rect width='40' height='20' fill='#2b6cff'/></svg>"
@@ -133,6 +190,9 @@
                 var cropped = await zxd.crop(svg, 0, 20, 0, 10);
                 test('rotate', typeof rotated === 'string' && rotated.indexOf('data:image/') === 0, rotated.slice(0, 24));
                 test('crop', typeof cropped === 'string' && cropped.indexOf('data:image/') === 0, cropped.slice(0, 24));
+
+                zxd.clear();
+                test('clear storage', zxd.store('smoke-key') === null, 'storage cleared');
             } catch (error) {
                 pushResult(false, 'unexpected error', error && error.message ? error.message : String(error));
                 console.error(error);

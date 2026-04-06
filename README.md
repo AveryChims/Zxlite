@@ -104,6 +104,10 @@ zxd.scrollX/scrollY() 获取滚动位置
 方法 说明
 zxd.json(data, action, key, value) JSON 操作：edit/add/del/get/list
 
+补充：
+`list` 在对象上返回键名数组，例如 `['name', 'age']`；
+在数组上返回数组副本。
+
 ---
 
 七、网络请求（3 个）
@@ -220,11 +224,31 @@ zxd.dl/sdl(path) 发起下载
 zxd.load(url) 动态加载 JS 脚本，返回 Promise
 zxd.px/em/cvd(value, mode) 单位转换
 zxd.isStr/isNum/isArr/isObj/isFn/isEl(v) 类型判断
-zxd.clone/deepCopy/copyDeep(obj) 深拷贝
+zxd.cloneDeep/deepCopy/copyDeep(obj) 深拷贝
 zxd.debounce(fn, delay) 防抖函数
 zxd.throttle(fn, delay) 节流函数
 zxd.rgb2hex(r,g,b) / zxd.hex2rgb(hex) 颜色转换
 zxd.stop/break() 强制停止 JS 执行
+
+说明：
+`zxd.clone(el, deep)` 是 DOM 节点克隆。
+`zxd.cloneDeep/deepCopy/copyDeep(obj)` 才是普通对象深拷贝。
+
+---
+
+本地测试
+
+仓库内提供了一个可直接打开的烟雾测试页：
+
+```text
+examples/api-smoke.html
+```
+
+最简单的本地验证方式：
+
+1. 在仓库根目录启动静态服务器，例如 `python -m http.server 4173`
+2. 浏览器打开 `http://127.0.0.1:4173/examples/api-smoke.html`
+3. 页面会显示 PASS/FAIL 汇总
 
 ---
 
