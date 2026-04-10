@@ -1,15 +1,15 @@
 # zxlite.js 完整 API 参考手册
 
-**版本**: v1.3.7
+**版本**: v1.4.0
 
 ## 概述
 
-zxlite.js 是一个轻量级前端工具库，提供 DOM 操作、音频控制、动画效果、对话框扩展、动态主题、数据处理、网络请求等完整功能。所有 API 通过 `zxd` 对象调用，函数名简洁（1-10 个字符）。
+zxlite.js 是一个轻量级前端工具库，提供 DOM 操作、音频控制、动画效果、对话框扩展、动态主题、包管理、数据处理、网络请求等完整功能。所有 API 通过 `zxd` 对象调用，函数名简洁（1-10 个字符）。
 
 **注意:**
  - 对话框深色模式建议搭配深色主题，浅色建议搭配浅色主题！
  - 某个元素需要受到主题样式自动改变需要添加属性：主题色添加class="card"；自动主题色添加class="auto_color"
-
+ - zxd.import()库开发查看此文档就可以(其实我觉得没必要，只是通过这个提供简单的库调用，点击[这里](https://res.viqu.com)，导航到/web/lib/zxlite/查看可用库列表)
 
 ## 在线演示
 
@@ -215,10 +215,76 @@ zxd.dialogx('标题', '内容', '按钮1', 回调1, '按钮2', 回调2, '按钮3
 - 自动计算文本颜色（根据背景亮度）
 - 自动应用所有页面元素样式
 - 支持自定义主色：`zxd.style('light1', '#F87B40')`
+- 对话框完全不受主题影响，保持独立样式
+- `ntm_` 开头的元素不受主题影响
 
 ---
 
-## 八、JSON 数据处理
+## 八、包管理（v1.4.0 新增）
+
+| 方法 | 说明 | 示例 |
+|------|------|------|
+| `zxd.score(url)` | 设置包来源 | `zxd.score('https://example.com/packages/')` |
+| `zxd.import(pkgName)` | 导入单个包 | `await zxd.import('test')` |
+| `zxd.imports(pkg1, pkg2, ...)` | 导入多个包 | `await zxd.imports('test', 'utils')` |
+| `zxd.query(pkgName)` | 获取包信息 | `var info = await zxd.query('test')` |
+| `zxd.alias(pkgName, alias)` | 设置包别名 | `zxd.alias('test', 'abc')` |
+
+### 包结构
+
+```
+http://res.viqu.com/web/lib/zxlite/包名/
+├── main.zxd      # JS代码
+└── desc.prop     # 包信息
+```
+
+### main.zxd 示例
+
+```javascript
+window.test = {
+    test: function(content) {
+        return content;
+    },
+    add: function(a, b) {
+        return a + b;
+    }
+};
+```
+
+### desc.prop 示例
+
+```
+name=测试包
+author=Avery Chims
+version=1.0
+description=这是一个测试包
+```
+
+### 使用示例
+
+```javascript
+// 导入包
+await zxd.import('test');
+
+// 调用包内函数
+var result = test.test("内容");  // 返回 '内容'
+var sum = test.add(1, 2);       // 返回 3
+
+// 获取包信息
+var info = await zxd.query('test');
+console.log(info.name, info.version);
+
+// 设置别名
+zxd.alias('test', 'abc');
+var result2 = abc.test("内容");
+
+// 修改包来源
+zxd.score('https://my-server.com/packages/');
+```
+
+---
+
+## 九、JSON 数据处理
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
@@ -236,7 +302,7 @@ zxd.dialogx('标题', '内容', '按钮1', 回调1, '按钮2', 回调2, '按钮3
 
 ---
 
-## 九、网络请求
+## 十、网络请求
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
@@ -247,7 +313,7 @@ zxd.dialogx('标题', '内容', '按钮1', 回调1, '按钮2', 回调2, '按钮3
 
 ---
 
-## 十、事件绑定
+## 十一、事件绑定
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
@@ -257,7 +323,7 @@ zxd.dialogx('标题', '内容', '按钮1', 回调1, '按钮2', 回调2, '按钮3
 
 ---
 
-## 十一、字符串操作
+## 十二、字符串操作
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
@@ -277,7 +343,7 @@ zxd.dialogx('标题', '内容', '按钮1', 回调1, '按钮2', 回调2, '按钮3
 
 ---
 
-## 十二、时间与随机数
+## 十三、时间与随机数
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
@@ -300,7 +366,7 @@ zxd.dialogx('标题', '内容', '按钮1', 回调1, '按钮2', 回调2, '按钮3
 
 ---
 
-## 十三、数学计算
+## 十四、数学计算
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
@@ -331,7 +397,7 @@ zxd.dialogx('标题', '内容', '按钮1', 回调1, '按钮2', 回调2, '按钮3
 
 ---
 
-## 十四、渐变背景
+## 十五、渐变背景
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
@@ -352,7 +418,7 @@ zxd.dialogx('标题', '内容', '按钮1', 回调1, '按钮2', 回调2, '按钮3
 
 ---
 
-## 十五、存储
+## 十六、存储
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
@@ -363,7 +429,7 @@ zxd.dialogx('标题', '内容', '按钮1', 回调1, '按钮2', 回调2, '按钮3
 
 ---
 
-## 十六、设备与浏览器信息
+## 十七、设备与浏览器信息
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
@@ -378,7 +444,7 @@ zxd.dialogx('标题', '内容', '按钮1', 回调1, '按钮2', 回调2, '按钮3
 
 ---
 
-## 十七、URL 参数操作
+## 十八、URL 参数操作
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
@@ -388,7 +454,7 @@ zxd.dialogx('标题', '内容', '按钮1', 回调1, '按钮2', 回调2, '按钮3
 
 ---
 
-## 十八、图片处理
+## 十九、图片处理
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
@@ -399,7 +465,7 @@ zxd.dialogx('标题', '内容', '按钮1', 回调1, '按钮2', 回调2, '按钮3
 
 ---
 
-## 十九、其他工具函数
+## 二十、其他工具函数
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
@@ -441,6 +507,12 @@ zxd.del('newBox');
 // 获取元素
 var els = zxd.gui('class', 'card', true);
 var el = zxd.gui('id', 'demo');
+
+// ========== 包管理（v1.4.0） ==========
+await zxd.import('test');
+var result = test.test("内容");
+var info = await zxd.query('test');
+zxd.alias('test', 'abc');
 
 // ========== 音频控制 ==========
 var ctrl = zxd.play('music.mp3');
@@ -570,7 +642,9 @@ var copy = zxd.cloneDeep({a:1,b:{c:2}});
 5. 对话框默认点击外面不关闭（可通过参数配置）
 6. Toast 连续触发时会自动排队，每个完整显示设定时长
 7. 动态主题会自动计算文本颜色并应用到所有页面元素
-8. 所有延迟方法返回 Promise，可使用 async/await
+8. 对话框完全不受主题影响，保持独立样式
+9. `ntm_` 开头的元素不受主题影响
+10. 所有延迟方法返回 Promise，可使用 async/await
 
 ---
 
@@ -578,6 +652,9 @@ var copy = zxd.cloneDeep({a:1,b:{c:2}});
 
 | 版本 | 更新内容 |
 |------|----------|
+| v1.4.0 | 新增包管理(import/score/imports/query/alias)，对话框完全独立于主题 |
+| v1.3.9 | 对话框独立样式，ntm_开头元素不受主题影响 |
+| v1.3.8 | 原有对话框调用dialogx，对话框样式优先 |
 | v1.3.7 | 优化深色模式 Toast 阴影、颜色协调、Toast 连续触发修复 |
 | v1.3.6 | Toast 透明背景、自动文本颜色、完整主题系统 |
 | v1.3.5 | 修复 Toast 边框、主题文本颜色 |
@@ -588,124 +665,4 @@ var copy = zxd.cloneDeep({a:1,b:{c:2}});
 | v1.3.0 | 新增 dialogx/dialogi/dialogc、6种样式、动态主题 |
 | v1.2.0 | 新增 30+ 动画、完整 DOM 操作 |
 | v1.1.0 | 新增 60+ 工具函数 |
-| v1.0.0 | 初始版本 |onsole.log('输入:', name);
-
-// 自定义布局
-let view = zxd.dialogc('<div><input id="myInput"><button id="myBtn">提交</button></div>', true);
-let btn = zxd.dialogd(view, 'myBtn');
-btn.onclick = () => { console.log('提交'); };
-
-// 切换全局对话框样式
-zxd.dialogs('dark1');
-
-// ========== Toast ==========
-zxd.toast('底部提示', 2000);
-zxd.toastt('顶部提示', 2000);
-
-// 开关动画
-zxd.dialoga(false);  // 关闭对话框动画
-zxd.toasta(false);   // 关闭 Toast 动画
-
-// ========== 动态主题 ==========
-zxd.style('dark1', '#7c3aed');  // 暗色主题，紫色主色
-zxd.style('light1');            // 亮色主题
-
-// ========== 页面控制 ==========
-zxd.meta('title', '新标题');
-zxd.page('top');
-zxd.full();
-
-// ========== JSON 操作 ==========
-var data = {name:'张三', age:18};
-data = zxd.json(data, 'add', 'city', '北京');
-var age = zxd.json(data, 'get', 'age');
-
-// ========== 网络请求 ==========
-zxd.ajaxGet('https://api.example.com').then(html => console.log(html));
-zxd.ajaxPost('https://api.example.com', {name:'张三'}).then(res => {});
-
-// ========== 事件绑定 ==========
-zxd.on('btn', 'click', () => alert('clicked'));
-zxd.ele('btn', 'click');
-
-// ========== 字符串操作 ==========
-var result = zxd.rp('abc abc', 'a', 'x', true);
-var base64 = zxd.mk('Hello 世界');
-var decoded = zxd.rk(base64);
-zxd.copy('复制内容');
-
-// ========== 时间 ==========
-var time = zxd.time(0);
-var timestamp = zxd.now();
-
-// ========== 随机数 ==========
-var num = zxd.rand(1, 100, false);
-var uuid = zxd.uuid();
-
-// ========== 计算 ==========
-var calc = zxd.calc('abs(-5) + sin(0.5) * 10');
-
-// ========== 渐变 ==========
-zxd.bm('topbottom', 'box', '#ff0000|#00ff00');
-
-// ========== 存储 ==========
-zxd.store('name', '张三');
-var name = zxd.store('name');
-zxd.cookie('token', 'abc123', 7);
-
-// ========== 设备判断 ==========
-if (zxd.isMobile()) console.log('手机端');
-
-// ========== URL 参数 ==========
-var id = zxd.getParam('id');
-zxd.setParam('page', '2');
-
-// ========== 图片处理 ==========
-zxd.rotate('image.jpg', 90).then(dataUrl => {});
-zxd.crop('image.jpg', 0, 100, 0, 100).then(dataUrl => {});
-
-// ========== 工具函数 ==========
-await zxd.wait(1000);
-zxd.edit(true);
-zxd.dl('/file.pdf');
-zxd.update(); // 触发全局更新
-
-// 防抖节流
-var fn = zxd.debounce(() => console.log('执行'), 500);
-var fn2 = zxd.throttle(() => console.log('执行'), 1000);
-
-// 深拷贝
-var copy = zxd.cloneDeep({a:1,b:{c:2}});
-```
-
----
-
-注意事项
-
-1. 所有 API 通过 zxd 对象调用，如 zxd.set()
-2. 音频播放需要用户交互，首次播放可能需要点击页面
-3. 动画使用 Web Animations API，兼容现代浏览器
-4. 网络请求需要服务器支持 CORS
-5. 对话框默认点击外面不关闭（可通过参数配置）
-6. Toast 连续触发时会自动排队，每个完整显示设定时长
-7. 动态主题会自动计算文本颜色并应用到所有页面元素
-8. 所有延迟方法返回 Promise，可使用 async/await
-
----
-
-版本历史
-
-版本 更新内容
-v1.3.7 优化深色模式 Toast 阴影、颜色协调、Toast 连续触发修复
-v1.3.6 Toast 透明背景、自动文本颜色、完整主题系统
-v1.3.5 修复 Toast 边框、主题文本颜色
-v1.3.4 主题系统、动画控制、对话框动画
-v1.3.3 6 种对话框样式有明显差异
-v1.3.2 修复对话框样式和双按钮
-v1.3.1 修复对话框样式
-v1.3.0 新增 dialogx/dialogi/dialogc、6种样式、动态主题
-v1.2.0 新增 30+ 动画、完整 DOM 操作
-v1.1.0 新增 60+ 工具函数
-v1.0.0 初始版本
-
-```
+| v1.0.0 | 初始版本 |
