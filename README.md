@@ -18,8 +18,9 @@ zxlite.js 是一个轻量级前端工具库，提供 DOM 操作、音频控制�
 ## 引入方式
 
 ```html
-<script src="https://res.viqu.com/web/js/zxlite.js"></script>
+<script src="https://res.viqu.com/web/js/zxlite.min.js"></script>
 ```
+_如有问题可以换成https://res.viqu.com/web/js/zxlite.js_
 
 ---
 
