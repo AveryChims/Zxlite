@@ -235,8 +235,10 @@ zxd.dialogx('标题', '内容', '按钮1', 回调1, '按钮2', 回调2, '按钮3
 
 ```
 http://res.viqu.com/web/lib/zxlite/包名/
-├── main.zxd      # JS代码
-└── desc.prop     # 包信息
+├── main.zxd       # JS代码(必须包含)
+├── desc.prop      # 包信息(必须包含)
+├── instrument.txt # 包说明
+└── view.html      # 包预览
 ```
 
 ### main.zxd 示例
