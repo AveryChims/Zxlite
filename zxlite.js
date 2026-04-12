@@ -1,6 +1,6 @@
 /**
- * zxlite.js - 轻量级前端工具库 v1.4.1
- * 包管理功能：通过对象调用包内函数
+ * zxlite.js - 轻量级前端工具库 v2.0.0
+ * 新增高级模块：bus/store/router/http/cache/queue/valid/template
  */
 (function(global) {
     'use strict';
@@ -1195,7 +1195,7 @@
     
 })(typeof window !== 'undefined' ? window : this);
 
-if (typeof console !== 'undefined') console.log('zxlite.js v1.4.1 loaded - 包管理功能，通过对象调用');
+if (typeof console !== 'undefined') console.log('zxlite.js v2.0.0 loaded - 高级模块已启用');
 
 // 设置默认 Toast 背景色
 (function() {
@@ -1206,3 +1206,2276 @@ if (typeof console !== 'undefined') console.log('zxlite.js v1.4.1 loaded - 包�
         document.head.appendChild(s);
     }
 })();
+
+/**
+ * zxlite.js Advanced Extension Pack v2.0.0
+ * 提供高级能力：事件总线、状态管理、路由、HTTP、缓存、队列、校验、模板等
+ */
+(function(global) {
+    'use strict';
+    
+    var Z = global.zxd || global.zxlite;
+    if (!Z) return;
+    
+    function zxTypeOf(v) {
+        if (v === null) return 'null';
+        if (Array.isArray(v)) return 'array';
+        return typeof v;
+    }
+    
+    function zxIsObj(v) {
+        return v !== null && typeof v === 'object' && !Array.isArray(v);
+    }
+    
+    function zxIsPlain(v) {
+        if (!zxIsObj(v)) return false;
+        var p = Object.getPrototypeOf(v);
+        return p === Object.prototype || p === null;
+    }
+    
+    function zxClone(v) {
+        if (v === undefined || v === null) return v;
+        if (Array.isArray(v)) {
+            var arr = [];
+            for (var i = 0; i < v.length; i++) arr.push(zxClone(v[i]));
+            return arr;
+        }
+        if (zxIsObj(v)) {
+            var out = {};
+            for (var k in v) out[k] = zxClone(v[k]);
+            return out;
+        }
+        return v;
+    }
+    
+    function zxMerge(a, b) {
+        var base = zxClone(a || {});
+        if (!zxIsObj(b)) return base;
+        for (var k in b) {
+            if (zxIsPlain(base[k]) && zxIsPlain(b[k])) base[k] = zxMerge(base[k], b[k]);
+            else base[k] = zxClone(b[k]);
+        }
+        return base;
+    }
+    
+    function zxToPath(path) {
+        if (Array.isArray(path)) return path.slice();
+        if (typeof path !== 'string') return [path];
+        return path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(function(x) {
+            return x !== '';
+        });
+    }
+    
+    function zxPathGet(obj, path, fallback) {
+        var seg = zxToPath(path);
+        var cur = obj;
+        for (var i = 0; i < seg.length; i++) {
+            if (cur == null) return fallback;
+            cur = cur[seg[i]];
+        }
+        return cur === undefined ? fallback : cur;
+    }
+    
+    function zxPathSet(obj, path, value) {
+        if (!zxIsObj(obj) && !Array.isArray(obj)) return obj;
+        var seg = zxToPath(path);
+        if (seg.length === 0) return obj;
+        var cur = obj;
+        for (var i = 0; i < seg.length - 1; i++) {
+            var key = seg[i];
+            if (!zxIsObj(cur[key]) && !Array.isArray(cur[key])) {
+                cur[key] = /^\d+$/.test(seg[i + 1]) ? [] : {};
+            }
+            cur = cur[key];
+        }
+        cur[seg[seg.length - 1]] = value;
+        return obj;
+    }
+    
+    function zxPathDel(obj, path) {
+        if (!zxIsObj(obj) && !Array.isArray(obj)) return false;
+        var seg = zxToPath(path);
+        if (!seg.length) return false;
+        var cur = obj;
+        for (var i = 0; i < seg.length - 1; i++) {
+            if (!zxIsObj(cur) && !Array.isArray(cur)) return false;
+            cur = cur[seg[i]];
+            if (cur == null) return false;
+        }
+        var leaf = seg[seg.length - 1];
+        if (Array.isArray(cur) && /^\d+$/.test(leaf)) {
+            var idx = parseInt(leaf, 10);
+            if (idx >= 0 && idx < cur.length) {
+                cur.splice(idx, 1);
+                return true;
+            }
+            return false;
+        }
+        if (Object.prototype.hasOwnProperty.call(cur, leaf)) {
+            delete cur[leaf];
+            return true;
+        }
+        return false;
+    }
+    
+    function zxUid(prefix) {
+        return (prefix || 'zx') + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+    }
+    
+    function zxEmitter() {
+        var map = new Map();
+        
+        function on(topic, fn, opt) {
+            if (typeof fn !== 'function') return function() {};
+            var key = String(topic || '*');
+            if (!map.has(key)) map.set(key, []);
+            var list = map.get(key);
+            var item = {
+                id: zxUid('ev'),
+                fn: fn,
+                once: !!(opt && opt.once),
+                order: opt && typeof opt.order === 'number' ? opt.order : 0
+            };
+            list.push(item);
+            list.sort(function(a, b) { return a.order - b.order; });
+            return function() {
+                off(key, item.id);
+            };
+        }
+        
+        function off(topic, ref) {
+            var key = String(topic || '*');
+            var list = map.get(key);
+            if (!list || !list.length) return false;
+            if (!ref) {
+                map.delete(key);
+                return true;
+            }
+            var next = [];
+            var hit = false;
+            for (var i = 0; i < list.length; i++) {
+                if (list[i].id === ref || list[i].fn === ref) hit = true;
+                else next.push(list[i]);
+            }
+            if (next.length) map.set(key, next);
+            else map.delete(key);
+            return hit;
+        }
+        
+        function emit(topic, payload, meta) {
+            var key = String(topic || '*');
+            var list = (map.get(key) || []).concat(map.get('*') || []);
+            for (var i = 0; i < list.length; i++) {
+                try {
+                    list[i].fn(payload, { topic: key, meta: meta || {}, time: Date.now() });
+                } catch (e) {
+                    console.error('zxlite emitter error:', e);
+                }
+            }
+            for (var j = 0; j < list.length; j++) {
+                if (list[j].once) {
+                    off(key, list[j].id);
+                    off('*', list[j].id);
+                }
+            }
+            return list.length;
+        }
+        
+        function once(topic, fn, opt) {
+            var conf = zxMerge(opt || {}, { once: true });
+            return on(topic, fn, conf);
+        }
+        
+        function clear(topic) {
+            if (topic === undefined) map.clear();
+            else map.delete(String(topic));
+            return true;
+        }
+        
+        function topics() {
+            return Array.from(map.keys());
+        }
+        
+        function size(topic) {
+            if (topic !== undefined) return (map.get(String(topic)) || []).length;
+            var total = 0;
+            map.forEach(function(list) { total += list.length; });
+            return total;
+        }
+        
+        return { on: on, off: off, emit: emit, once: once, clear: clear, topics: topics, size: size };
+    }
+    
+    Z.clone = Z.clone || function(v) { return zxClone(v); };
+    Z.merge = Z.merge || function(a, b) { return zxMerge(a, b); };
+    Z.pathGet = Z.pathGet || function(obj, path, fallback) { return zxPathGet(obj, path, fallback); };
+    Z.pathSet = Z.pathSet || function(obj, path, value) { return zxPathSet(obj, path, value); };
+    Z.pathDel = Z.pathDel || function(obj, path) { return zxPathDel(obj, path); };
+    Z.type = Z.type || function(v) { return zxTypeOf(v); };
+    
+    // ========== 事件总线 ==========
+    Z.busx = function(options) {
+        var conf = zxMerge({
+            debug: false,
+            replayLimit: 50
+        }, options || {});
+        var em = zxEmitter();
+        var logs = [];
+        
+        function debug(action, topic) {
+            if (!conf.debug) return;
+            console.log('[zxlite.busx]', action, topic || '');
+        }
+        
+        function save(topic, payload) {
+            logs.push({
+                topic: topic,
+                payload: zxClone(payload),
+                time: Date.now()
+            });
+            while (logs.length > conf.replayLimit) logs.shift();
+        }
+        
+        function on(topic, fn, opt) {
+            debug('on', topic);
+            return em.on(topic, fn, opt || {});
+        }
+        
+        function once(topic, fn, opt) {
+            debug('once', topic);
+            return em.once(topic, fn, opt || {});
+        }
+        
+        function off(topic, ref) {
+            debug('off', topic);
+            return em.off(topic, ref);
+        }
+        
+        function emit(topic, payload, meta) {
+            var t = String(topic || '*');
+            debug('emit', t);
+            save(t, payload);
+            return em.emit(t, payload, meta);
+        }
+        
+        function emitMany(topics, payload, meta) {
+            if (!Array.isArray(topics)) return 0;
+            var total = 0;
+            for (var i = 0; i < topics.length; i++) total += emit(topics[i], payload, meta);
+            return total;
+        }
+        
+        function wait(topic, timeout) {
+            var limit = typeof timeout === 'number' ? timeout : 0;
+            return new Promise(function(resolve, reject) {
+                var timer = null;
+                var un = once(topic, function(payload, evt) {
+                    if (timer) clearTimeout(timer);
+                    resolve({ payload: payload, event: evt });
+                });
+                if (limit > 0) {
+                    timer = setTimeout(function() {
+                        un();
+                        reject(new Error('busx wait timeout: ' + topic));
+                    }, limit);
+                }
+            });
+        }
+        
+        function history(topic) {
+            if (!topic) return logs.slice();
+            var key = String(topic);
+            return logs.filter(function(item) { return item.topic === key; });
+        }
+        
+        function clear(topic) {
+            if (!topic) logs = [];
+            else logs = logs.filter(function(item) { return item.topic !== String(topic); });
+            return em.clear(topic);
+        }
+        
+        return {
+            on: on,
+            once: once,
+            off: off,
+            emit: emit,
+            emitMany: emitMany,
+            wait: wait,
+            history: history,
+            clear: clear,
+            topics: em.topics,
+            size: em.size
+        };
+    };
+    
+    Z._busxDefault = Z._busxDefault || Z.busx();
+    Z.busCreate = function(opts) { return Z.busx(opts); };
+    Z.busOn = function(topic, fn, opt) { return Z._busxDefault.on(topic, fn, opt); };
+    Z.busOnce = function(topic, fn, opt) { return Z._busxDefault.once(topic, fn, opt); };
+    Z.busOff = function(topic, ref) { return Z._busxDefault.off(topic, ref); };
+    Z.busEmit = function(topic, payload, meta) { return Z._busxDefault.emit(topic, payload, meta); };
+    Z.busWait = function(topic, timeout) { return Z._busxDefault.wait(topic, timeout); };
+    Z.busHistory = function(topic) { return Z._busxDefault.history(topic); };
+    
+    // 数据处理增强
+    Z.pick = function(obj, keys) {
+        var src = zxIsObj(obj) ? obj : {};
+        var list = Array.isArray(keys) ? keys : [];
+        var out = {};
+        for (var i = 0; i < list.length; i++) {
+            var k = list[i];
+            if (Object.prototype.hasOwnProperty.call(src, k)) out[k] = src[k];
+        }
+        return out;
+    };
+    
+    Z.omit = function(obj, keys) {
+        var src = zxIsObj(obj) ? obj : {};
+        var list = Array.isArray(keys) ? keys : [];
+        var ban = {};
+        for (var i = 0; i < list.length; i++) ban[list[i]] = true;
+        var out = {};
+        for (var k in src) if (!ban[k]) out[k] = src[k];
+        return out;
+    };
+    
+    Z.groupBy = function(arr, key) {
+        var list = Array.isArray(arr) ? arr : [];
+        var out = {};
+        for (var i = 0; i < list.length; i++) {
+            var row = list[i];
+            var g = typeof key === 'function' ? key(row, i) : (row ? row[key] : undefined);
+            var tag = String(g);
+            if (!out[tag]) out[tag] = [];
+            out[tag].push(row);
+        }
+        return out;
+    };
+    
+    Z.uniqueBy = function(arr, key) {
+        var list = Array.isArray(arr) ? arr : [];
+        var seen = new Set();
+        var out = [];
+        for (var i = 0; i < list.length; i++) {
+            var row = list[i];
+            var id = typeof key === 'function' ? key(row, i) : (row ? row[key] : row);
+            var token = JSON.stringify(id);
+            if (seen.has(token)) continue;
+            seen.add(token);
+            out.push(row);
+        }
+        return out;
+    };
+    
+    Z.sortBy = function(arr, key, order) {
+        var list = Array.isArray(arr) ? arr.slice() : [];
+        var asc = (order || 'asc') !== 'desc';
+        list.sort(function(a, b) {
+            var av = typeof key === 'function' ? key(a) : zxPathGet(a, key);
+            var bv = typeof key === 'function' ? key(b) : zxPathGet(b, key);
+            if (av === bv) return 0;
+            if (av > bv) return asc ? 1 : -1;
+            return asc ? -1 : 1;
+        });
+        return list;
+    };
+    
+    Z.chunk = function(arr, size) {
+        var list = Array.isArray(arr) ? arr : [];
+        var n = Math.max(1, Number(size) || 1);
+        var out = [];
+        for (var i = 0; i < list.length; i += n) out.push(list.slice(i, i + n));
+        return out;
+    };
+    
+    Z.range = function(start, end, step) {
+        var s = Number(start) || 0;
+        var e = Number(end) || 0;
+        var st = Number(step) || 1;
+        if (st === 0) st = 1;
+        var out = [];
+        if (s <= e) for (var i = s; i <= e; i += Math.abs(st)) out.push(i);
+        else for (var j = s; j >= e; j -= Math.abs(st)) out.push(j);
+        return out;
+    };
+    
+})(typeof window !== 'undefined' ? window : this);
+
+(function(global) {
+    'use strict';
+    
+    var Z = global.zxd || global.zxlite;
+    if (!Z) return;
+    
+    function zClone(v) { return Z.clone ? Z.clone(v) : JSON.parse(JSON.stringify(v)); }
+    function zMerge(a, b) { return Z.merge ? Z.merge(a, b) : Object.assign({}, a || {}, b || {}); }
+    function zGet(obj, path, fallback) { return Z.pathGet ? Z.pathGet(obj, path, fallback) : fallback; }
+    
+    // ========== validx ==========
+    Z.validx = function(schema, options) {
+        var conf = zMerge({
+            stopOnFirst: false,
+            trimString: true,
+            messages: {}
+        }, options || {});
+        
+        var rules = {};
+        var customRules = {};
+        
+        function msg(name, fallback) {
+            return conf.messages[name] || fallback;
+        }
+        
+        function normalizeRule(rule) {
+            if (typeof rule === 'string') return { rule: rule };
+            if (typeof rule === 'function') return { rule: 'custom', validator: rule };
+            return rule || {};
+        }
+        
+        function setSchema(nextSchema) {
+            rules = {};
+            var src = nextSchema || {};
+            for (var field in src) {
+                var arr = Array.isArray(src[field]) ? src[field] : [src[field]];
+                rules[field] = arr.map(normalizeRule);
+            }
+            return true;
+        }
+        
+        function normalizeData(raw) {
+            if (!raw || typeof raw !== 'object') return {};
+            if (!conf.trimString) return zClone(raw);
+            var out = zClone(raw);
+            Object.keys(out).forEach(function(k) {
+                if (typeof out[k] === 'string') out[k] = out[k].trim();
+            });
+            return out;
+        }
+        
+        function checkRule(field, value, data, ruleDef) {
+            var rule = ruleDef.rule || 'custom';
+            var required = ruleDef.required === true || rule === 'required';
+            var empty = value === undefined || value === null || value === '';
+            if (empty && !required) return null;
+            
+            if (rule === 'required') {
+                if (empty) return ruleDef.message || msg('required', field + ' is required');
+                return null;
+            }
+            if (rule === 'type') {
+                if ((Z.type ? Z.type(value) : typeof value) !== ruleDef.value) return ruleDef.message || msg('type', field + ' type must be ' + ruleDef.value);
+                return null;
+            }
+            if (rule === 'min') {
+                if (typeof value !== 'number' || value < ruleDef.value) return ruleDef.message || msg('min', field + ' must be >= ' + ruleDef.value);
+                return null;
+            }
+            if (rule === 'max') {
+                if (typeof value !== 'number' || value > ruleDef.value) return ruleDef.message || msg('max', field + ' must be <= ' + ruleDef.value);
+                return null;
+            }
+            if (rule === 'minLen') {
+                if (String(value).length < ruleDef.value) return ruleDef.message || msg('minLen', field + ' length must be >= ' + ruleDef.value);
+                return null;
+            }
+            if (rule === 'maxLen') {
+                if (String(value).length > ruleDef.value) return ruleDef.message || msg('maxLen', field + ' length must be <= ' + ruleDef.value);
+                return null;
+            }
+            if (rule === 'len') {
+                if (String(value).length !== ruleDef.value) return ruleDef.message || msg('len', field + ' length must be ' + ruleDef.value);
+                return null;
+            }
+            if (rule === 'pattern') {
+                var re = ruleDef.value instanceof RegExp ? ruleDef.value : new RegExp(ruleDef.value);
+                if (!re.test(String(value))) return ruleDef.message || msg('pattern', field + ' format invalid');
+                return null;
+            }
+            if (rule === 'email') {
+                var email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!email.test(String(value))) return ruleDef.message || msg('email', field + ' is not a valid email');
+                return null;
+            }
+            if (rule === 'url') {
+                try {
+                    new URL(String(value));
+                    return null;
+                } catch (e) {
+                    return ruleDef.message || msg('url', field + ' is not a valid url');
+                }
+            }
+            if (rule === 'enum') {
+                var allow = Array.isArray(ruleDef.value) ? ruleDef.value : [];
+                if (allow.indexOf(value) === -1) return ruleDef.message || msg('enum', field + ' is not in enum');
+                return null;
+            }
+            if (rule === 'sameAs') {
+                if (value !== zGet(data, ruleDef.value)) return ruleDef.message || msg('sameAs', field + ' must equal ' + ruleDef.value);
+                return null;
+            }
+            if (rule === 'custom') {
+                var fn = ruleDef.validator || ruleDef.value;
+                if (typeof fn !== 'function') return null;
+                var out = fn(value, data, field, ruleDef);
+                if (out === true || out === undefined || out === null) return null;
+                if (out === false) return ruleDef.message || msg('custom', field + ' invalid');
+                return String(out);
+            }
+            if (customRules[rule]) {
+                var customOut = customRules[rule](value, data, field, ruleDef);
+                if (customOut === true || customOut === undefined || customOut === null) return null;
+                if (customOut === false) return ruleDef.message || msg(rule, field + ' invalid');
+                return String(customOut);
+            }
+            return null;
+        }
+        
+        function fieldValidate(field, data, cfg) {
+            var local = cfg || {};
+            var src = normalizeData(data || {});
+            var value = zGet(src, field);
+            var list = rules[field] || [];
+            var errors = [];
+            for (var i = 0; i < list.length; i++) {
+                var e = checkRule(field, value, src, list[i]);
+                if (!e) continue;
+                errors.push(e);
+                if (local.stopOnFirst || conf.stopOnFirst) break;
+            }
+            return { field: field, valid: errors.length === 0, errors: errors };
+        }
+        
+        function validate(data, cfg) {
+            var local = cfg || {};
+            var src = normalizeData(data || {});
+            var fields = Object.keys(rules);
+            var errors = {};
+            var firstError = null;
+            for (var i = 0; i < fields.length; i++) {
+                var out = fieldValidate(fields[i], src, local);
+                if (!out.valid) {
+                    errors[fields[i]] = out.errors;
+                    if (!firstError) firstError = { field: fields[i], message: out.errors[0] };
+                    if (local.stopOnFirst || conf.stopOnFirst) break;
+                }
+            }
+            return {
+                valid: Object.keys(errors).length === 0,
+                errors: errors,
+                firstError: firstError,
+                data: src
+            };
+        }
+        
+        function validateAsync(data, cfg) {
+            var local = cfg || {};
+            var src = normalizeData(data || {});
+            var fields = Object.keys(rules);
+            var errors = {};
+            var firstError = null;
+            
+            function runField(i) {
+                if (i >= fields.length) {
+                    return Promise.resolve({
+                        valid: Object.keys(errors).length === 0,
+                        errors: errors,
+                        firstError: firstError,
+                        data: src
+                    });
+                }
+                var field = fields[i];
+                var value = zGet(src, field);
+                var list = rules[field] || [];
+                
+                function runRule(j) {
+                    if (j >= list.length) return Promise.resolve();
+                    var ruleDef = list[j];
+                    var rule = ruleDef.rule || 'custom';
+                    var asyncMode = rule === 'async' || ruleDef.async === true;
+                    if (!asyncMode) {
+                        var syncErr = checkRule(field, value, src, ruleDef);
+                        if (syncErr) {
+                            if (!errors[field]) errors[field] = [];
+                            errors[field].push(syncErr);
+                            if (!firstError) firstError = { field: field, message: syncErr };
+                            if (local.stopOnFirst || conf.stopOnFirst) return Promise.resolve('stop');
+                        }
+                        return runRule(j + 1);
+                    }
+                    var fn = ruleDef.validator || ruleDef.value;
+                    if (typeof fn !== 'function') return runRule(j + 1);
+                    return Promise.resolve(fn(value, src, field, ruleDef)).then(function(asyncOut) {
+                        if (asyncOut === true || asyncOut === undefined || asyncOut === null) return runRule(j + 1);
+                        var text = asyncOut === false ? (ruleDef.message || msg('async', field + ' invalid')) : String(asyncOut);
+                        if (!errors[field]) errors[field] = [];
+                        errors[field].push(text);
+                        if (!firstError) firstError = { field: field, message: text };
+                        if (local.stopOnFirst || conf.stopOnFirst) return 'stop';
+                        return runRule(j + 1);
+                    }).catch(function(e) {
+                        var text = ruleDef.message || e.message || (field + ' async check failed');
+                        if (!errors[field]) errors[field] = [];
+                        errors[field].push(text);
+                        if (!firstError) firstError = { field: field, message: text };
+                        if (local.stopOnFirst || conf.stopOnFirst) return 'stop';
+                        return runRule(j + 1);
+                    });
+                }
+                
+                return runRule(0).then(function(flag) {
+                    if (flag === 'stop') {
+                        return {
+                            valid: false,
+                            errors: errors,
+                            firstError: firstError,
+                            data: src
+                        };
+                    }
+                    return runField(i + 1);
+                });
+            }
+            
+            return runField(0);
+        }
+        
+        function extendRule(name, fn) {
+            if (!name || typeof fn !== 'function') return false;
+            customRules[name] = fn;
+            return true;
+        }
+        
+        setSchema(schema || {});
+        
+        return {
+            setSchema: setSchema,
+            schema: function() { return zClone(rules); },
+            validate: validate,
+            validateAsync: validateAsync,
+            field: fieldValidate,
+            extendRule: extendRule
+        };
+    };
+    
+    Z.createValidator = function(schema, options) { return Z.validx(schema, options); };
+    
+    // ========== tplx ==========
+    Z.tplx = (function() {
+        var components = {};
+        
+        function escapeHtml(input) {
+            return String(input == null ? '' : input)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+        
+        function render(template, data, options) {
+            var conf = zMerge({
+                escape: true,
+                fallback: ''
+            }, options || {});
+            var tpl = String(template || '');
+            return tpl.replace(/\{\{\s*([^}\s]+)\s*\}\}/g, function(_, token) {
+                var value = zGet(data || {}, token, conf.fallback);
+                if (value === undefined || value === null) value = conf.fallback;
+                return conf.escape ? escapeHtml(String(value)) : String(value);
+            });
+        }
+        
+        function compile(template, options) {
+            return function(data, localOptions) {
+                return render(template, data, zMerge(options || {}, localOptions || {}));
+            };
+        }
+        
+        function list(items, template, options) {
+            var conf = zMerge({
+                join: '',
+                startIndex: 0,
+                escape: true
+            }, options || {});
+            var arr = Array.isArray(items) ? items : [];
+            var out = [];
+            for (var i = 0; i < arr.length; i++) {
+                out.push(render(template, zMerge(arr[i], { $index: i + conf.startIndex }), conf));
+            }
+            return out.join(conf.join);
+        }
+        
+        function mount(target, template, state, options) {
+            var conf = zMerge({
+                escape: true,
+                onRender: null
+            }, options || {});
+            var el = typeof target === 'string' ? document.querySelector(target) : target;
+            if (!el) return null;
+            var localState = zClone(state || {});
+            var disposed = false;
+            
+            function redraw(patch) {
+                if (disposed) return false;
+                if (patch && typeof patch === 'object') localState = zMerge(localState, patch);
+                el.innerHTML = render(template, localState, conf);
+                if (typeof conf.onRender === 'function') conf.onRender(el, zClone(localState));
+                return true;
+            }
+            
+            redraw();
+            
+            return {
+                el: el,
+                state: function() { return zClone(localState); },
+                set: function(path, value) {
+                    if (Z.pathSet) Z.pathSet(localState, path, value);
+                    else localState[path] = value;
+                    return redraw();
+                },
+                patch: function(patchObj) {
+                    localState = zMerge(localState, patchObj || {});
+                    return redraw();
+                },
+                redraw: redraw,
+                destroy: function() { disposed = true; return true; }
+            };
+        }
+        
+        function define(name, def) {
+            if (!name || !def) return false;
+            components[name] = {
+                template: def.template || '',
+                setup: typeof def.setup === 'function' ? def.setup : null,
+                mounted: typeof def.mounted === 'function' ? def.mounted : null,
+                updated: typeof def.updated === 'function' ? def.updated : null,
+                beforeDestroy: typeof def.beforeDestroy === 'function' ? def.beforeDestroy : null
+            };
+            return true;
+        }
+        
+        function create(name, props) {
+            var comp = components[name];
+            if (!comp) return null;
+            var ctx = {
+                props: zClone(props || {}),
+                state: {},
+                setState: function(path, value) {
+                    if (Z.pathSet) Z.pathSet(ctx.state, path, value);
+                    else ctx.state[path] = value;
+                },
+                getState: function(path, fallback) {
+                    return Z.pathGet ? Z.pathGet(ctx.state, path, fallback) : fallback;
+                },
+                emit: function(evt, payload) {
+                    if (Z.busEmit) Z.busEmit('component:' + name + ':' + evt, payload);
+                }
+            };
+            if (comp.setup) {
+                var setupOut = comp.setup(ctx);
+                if (setupOut && typeof setupOut === 'object') ctx.state = zMerge(ctx.state, setupOut);
+            }
+            return {
+                name: name,
+                ctx: ctx,
+                render: function(extraProps, options) {
+                    if (extraProps && typeof extraProps === 'object') ctx.props = zMerge(ctx.props, extraProps);
+                    return render(comp.template, zMerge(ctx.state, ctx.props), options || {});
+                },
+                mount: function(target, extraProps, options) {
+                    var html = this.render(extraProps, options);
+                    var el = typeof target === 'string' ? document.querySelector(target) : target;
+                    if (!el) return false;
+                    el.innerHTML = html;
+                    if (comp.mounted) comp.mounted(el, ctx);
+                    return true;
+                },
+                update: function(target, patch, options) {
+                    if (patch && typeof patch === 'object') ctx.props = zMerge(ctx.props, patch);
+                    var ok = this.mount(target, null, options);
+                    if (ok && comp.updated) {
+                        var el = typeof target === 'string' ? document.querySelector(target) : target;
+                        comp.updated(el, ctx);
+                    }
+                    return ok;
+                },
+                destroy: function(target) {
+                    var el = typeof target === 'string' ? document.querySelector(target) : target;
+                    if (comp.beforeDestroy && el) comp.beforeDestroy(el, ctx);
+                    return true;
+                }
+            };
+        }
+        
+        function remove(name) {
+            if (!components[name]) return false;
+            delete components[name];
+            return true;
+        }
+        
+        function names() {
+            return Object.keys(components);
+        }
+        
+        return {
+            escape: escapeHtml,
+            render: render,
+            compile: compile,
+            list: list,
+            mount: mount,
+            define: define,
+            create: create,
+            remove: remove,
+            names: names
+        };
+    })();
+    
+    // ========== datex ==========
+    Z.datex = {
+        parse: function(input) {
+            if (input instanceof Date) return new Date(input.getTime());
+            if (typeof input === 'number') return new Date(input);
+            if (!input) return new Date();
+            return new Date(input);
+        },
+        pad: function(n) { return String(n).padStart(2, '0'); },
+        format: function(input, pattern) {
+            var d = Z.datex.parse(input);
+            if (isNaN(d.getTime())) return '';
+            var fmt = pattern || 'YYYY-MM-DD HH:mm:ss';
+            var map = {
+                YYYY: d.getFullYear(),
+                MM: Z.datex.pad(d.getMonth() + 1),
+                DD: Z.datex.pad(d.getDate()),
+                HH: Z.datex.pad(d.getHours()),
+                mm: Z.datex.pad(d.getMinutes()),
+                ss: Z.datex.pad(d.getSeconds()),
+                SSS: String(d.getMilliseconds()).padStart(3, '0')
+            };
+            var out = fmt;
+            Object.keys(map).forEach(function(k) {
+                out = out.replace(new RegExp(k, 'g'), map[k]);
+            });
+            return out;
+        },
+        add: function(input, amount, unit) {
+            var d = Z.datex.parse(input);
+            var n = Number(amount) || 0;
+            var u = unit || 'day';
+            if (u === 'ms') d.setMilliseconds(d.getMilliseconds() + n);
+            else if (u === 'second') d.setSeconds(d.getSeconds() + n);
+            else if (u === 'minute') d.setMinutes(d.getMinutes() + n);
+            else if (u === 'hour') d.setHours(d.getHours() + n);
+            else if (u === 'month') d.setMonth(d.getMonth() + n);
+            else if (u === 'year') d.setFullYear(d.getFullYear() + n);
+            else d.setDate(d.getDate() + n);
+            return d;
+        },
+        diff: function(a, b, unit) {
+            var d1 = Z.datex.parse(a).getTime();
+            var d2 = Z.datex.parse(b).getTime();
+            var ms = d1 - d2;
+            var u = unit || 'ms';
+            if (u === 'second') return ms / 1000;
+            if (u === 'minute') return ms / (1000 * 60);
+            if (u === 'hour') return ms / (1000 * 60 * 60);
+            if (u === 'day') return ms / (1000 * 60 * 60 * 24);
+            return ms;
+        },
+        isValid: function(input) {
+            var d = Z.datex.parse(input);
+            return !isNaN(d.getTime());
+        },
+        startOf: function(input, unit) {
+            var d = Z.datex.parse(input);
+            var u = unit || 'day';
+            if (u === 'year') {
+                d.setMonth(0, 1);
+                d.setHours(0, 0, 0, 0);
+            } else if (u === 'month') {
+                d.setDate(1);
+                d.setHours(0, 0, 0, 0);
+            } else if (u === 'hour') {
+                d.setMinutes(0, 0, 0);
+            } else if (u === 'minute') {
+                d.setSeconds(0, 0);
+            } else {
+                d.setHours(0, 0, 0, 0);
+            }
+            return d;
+        },
+        endOf: function(input, unit) {
+            var d = Z.datex.startOf(input, unit);
+            if (unit === 'year') d.setFullYear(d.getFullYear() + 1);
+            else if (unit === 'month') d.setMonth(d.getMonth() + 1);
+            else if (unit === 'hour') d.setHours(d.getHours() + 1);
+            else if (unit === 'minute') d.setMinutes(d.getMinutes() + 1);
+            else d.setDate(d.getDate() + 1);
+            d.setMilliseconds(d.getMilliseconds() - 1);
+            return d;
+        }
+    };
+    
+    // ========== 安全与编码 ==========
+    Z.escape = function(str) { return Z.tplx.escape(str); };
+    Z.unescape = function(str) {
+        var map = {
+            '&lt;': '<',
+            '&gt;': '>',
+            '&amp;': '&',
+            '&quot;': '"',
+            '&#39;': "'"
+        };
+        return String(str || '').replace(/&lt;|&gt;|&amp;|&quot;|&#39;/g, function(hit) {
+            return map[hit] || hit;
+        });
+    };
+    Z.ue = function(str) { return encodeURIComponent(String(str || '')); };
+    Z.ud = function(str) { return decodeURIComponent(String(str || '')); };
+    
+    // ========== 组合工具 ==========
+    Z.pipeline = function(tasks, input) {
+        var list = Array.isArray(tasks) ? tasks : [];
+        return list.reduce(function(chain, task, idx) {
+            return chain.then(function(state) {
+                if (typeof task !== 'function') return state;
+                return task(state, idx);
+            });
+        }, Promise.resolve(input));
+    };
+    
+    Z.parallel = function(tasks, limit) {
+        var list = Array.isArray(tasks) ? tasks : [];
+        var max = Math.max(1, Number(limit) || list.length || 1);
+        var queue = Z.queuex({ concurrency: max, autoStart: true, retry: 0 });
+        var jobs = [];
+        for (var i = 0; i < list.length; i++) {
+            (function(task, index) {
+                jobs.push(queue.add(function() {
+                    if (typeof task !== 'function') return null;
+                    return task(index);
+                }));
+            })(list[i], i);
+        }
+        return Promise.all(jobs).finally(function() {
+            queue.destroy();
+        });
+    };
+    
+    Z.retry = function(fn, options) {
+        var conf = zMerge({
+            times: 3,
+            delay: 200,
+            factor: 1
+        }, options || {});
+        var count = 0;
+        function run() {
+            count++;
+            return Promise.resolve().then(fn).catch(function(e) {
+                if (count >= conf.times) throw e;
+                var wait = conf.delay * Math.pow(conf.factor, count - 1);
+                return new Promise(function(resolve) { setTimeout(resolve, wait); }).then(run);
+            });
+        }
+        return run();
+    };
+    
+})(typeof window !== 'undefined' ? window : this);
+
+(function(global) {
+    'use strict';
+    
+    var Z = global.zxd || global.zxlite;
+    if (!Z) return;
+    
+    function zClone(v) { return Z.clone ? Z.clone(v) : JSON.parse(JSON.stringify(v)); }
+    function zMerge(a, b) { return Z.merge ? Z.merge(a, b) : Object.assign({}, a || {}, b || {}); }
+    function zGet(obj, path, fallback) { return Z.pathGet ? Z.pathGet(obj, path, fallback) : fallback; }
+    
+    // ========== routerx ==========
+    Z.routerx = function(options) {
+        var conf = zMerge({
+            routes: [],
+            view: null,
+            notFound: null,
+            beforeEach: null,
+            afterEach: null,
+            debug: false
+        }, options || {});
+        
+        var started = false;
+        var current = null;
+        var beforeHooks = [];
+        var afterHooks = [];
+        var bus = Z.busCreate ? Z.busCreate() : { on: function() {}, off: function() {}, emit: function() {}, clear: function() {} };
+        
+        function log() {
+            if (!conf.debug) return;
+            var args = Array.prototype.slice.call(arguments);
+            args.unshift('[zxlite.routerx]');
+            console.log.apply(console, args);
+        }
+        
+        function normalize(path) {
+            var p = String(path || '/').trim();
+            if (!p) p = '/';
+            if (p[0] !== '/') p = '/' + p;
+            p = p.replace(/\/{2,}/g, '/');
+            if (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1);
+            return p;
+        }
+        
+        function parseQuery(qs) {
+            var out = {};
+            if (!qs) return out;
+            var q = qs.replace(/^\?/, '');
+            if (!q) return out;
+            q.split('&').forEach(function(part) {
+                if (!part) return;
+                var idx = part.indexOf('=');
+                if (idx < 0) out[decodeURIComponent(part)] = '';
+                else out[decodeURIComponent(part.slice(0, idx))] = decodeURIComponent(part.slice(idx + 1));
+            });
+            return out;
+        }
+        
+        function buildQuery(query) {
+            if (!query || typeof query !== 'object') return '';
+            var out = [];
+            for (var k in query) {
+                if (query[k] === undefined || query[k] === null) continue;
+                out.push(encodeURIComponent(k) + '=' + encodeURIComponent(String(query[k])));
+            }
+            return out.length ? ('?' + out.join('&')) : '';
+        }
+        
+        function parsePath(path) {
+            var src = String(path || '/');
+            var p = src;
+            var qs = '';
+            var qi = src.indexOf('?');
+            if (qi >= 0) {
+                p = src.slice(0, qi);
+                qs = src.slice(qi + 1);
+            }
+            return {
+                path: normalize(p),
+                query: parseQuery(qs)
+            };
+        }
+        
+        function tokenize(path) {
+            return normalize(path).split('/').filter(function(x) { return x; });
+        }
+        
+        function match(path) {
+            var parsed = parsePath(path);
+            var target = tokenize(parsed.path);
+            for (var i = 0; i < conf.routes.length; i++) {
+                var route = conf.routes[i];
+                var pattern = tokenize(route.path || '/');
+                if (pattern.length !== target.length) continue;
+                var params = {};
+                var ok = true;
+                for (var j = 0; j < pattern.length; j++) {
+                    if (pattern[j][0] === ':') params[pattern[j].slice(1)] = decodeURIComponent(target[j]);
+                    else if (pattern[j] !== target[j]) { ok = false; break; }
+                }
+                if (ok) {
+                    return {
+                        matched: true,
+                        path: parsed.path,
+                        fullPath: parsed.path + buildQuery(parsed.query),
+                        query: parsed.query,
+                        params: params,
+                        route: route
+                    };
+                }
+            }
+            return {
+                matched: false,
+                path: parsed.path,
+                fullPath: parsed.path + buildQuery(parsed.query),
+                query: parsed.query,
+                params: {},
+                route: null
+            };
+        }
+        
+        function getHashPath() {
+            return (window.location.hash || '#/').replace(/^#/, '') || '/';
+        }
+        
+        function setHashPath(path, replace) {
+            var p = path || '/';
+            if (replace) {
+                var next = window.location.pathname + window.location.search + '#' + p;
+                window.location.replace(next);
+            } else {
+                window.location.hash = p;
+            }
+        }
+        
+        function resolve(path) {
+            var out = match(path);
+            if (out.route) return out;
+            if (typeof conf.notFound === 'function') {
+                out.route = {
+                    name: 'not-found',
+                    path: out.path,
+                    component: conf.notFound
+                };
+            }
+            return out;
+        }
+        
+        function runGuards(list, to, from) {
+            return new Promise(function(resolvePromise) {
+                var i = 0;
+                function next(result) {
+                    if (result === false) return resolvePromise(false);
+                    if (typeof result === 'string') return resolvePromise(result);
+                    if (i >= list.length) return resolvePromise(true);
+                    var guard = list[i++];
+                    try {
+                        var out = guard(to, from, next);
+                        if (out instanceof Promise) {
+                            out.then(next).catch(function() { resolvePromise(false); });
+                            return;
+                        }
+                        if (out !== undefined) next(out);
+                    } catch (e) {
+                        console.error('routerx guard error:', e);
+                        resolvePromise(false);
+                    }
+                }
+                next(true);
+            });
+        }
+        
+        function render(to) {
+            if (!to || !to.route || !conf.view) return true;
+            var el = typeof conf.view === 'string' ? document.querySelector(conf.view) : conf.view;
+            if (!el) return false;
+            var comp = to.route.component;
+            if (typeof comp === 'function') {
+                var out = comp(to);
+                if (out instanceof Promise) {
+                    return out.then(function(html) {
+                        if (html !== undefined) el.innerHTML = html;
+                        return true;
+                    });
+                }
+                if (out !== undefined) el.innerHTML = out;
+                return true;
+            }
+            if (typeof comp === 'string') {
+                el.innerHTML = comp;
+                return true;
+            }
+            return false;
+        }
+        
+        function transition(path, mode) {
+            var from = current;
+            var to = resolve(path);
+            log('transition', mode, to.fullPath);
+            var guards = [];
+            if (typeof conf.beforeEach === 'function') guards.push(conf.beforeEach);
+            for (var i = 0; i < beforeHooks.length; i++) guards.push(beforeHooks[i]);
+            if (to.route && typeof to.route.beforeEnter === 'function') guards.push(to.route.beforeEnter);
+            
+            return runGuards(guards, to, from).then(function(allow) {
+                if (allow === false) {
+                    bus.emit('cancel', { to: to, from: from });
+                    return false;
+                }
+                if (typeof allow === 'string') {
+                    navigate(allow, { replace: true, trigger: true });
+                    return false;
+                }
+                if (from && from.route && typeof from.route.beforeLeave === 'function') {
+                    var leave = from.route.beforeLeave(to, from);
+                    if (leave === false) return false;
+                }
+                current = to;
+                var rendered = render(to);
+                return Promise.resolve(rendered).then(function() {
+                    if (from && from.route && typeof from.route.afterLeave === 'function') from.route.afterLeave(to, from);
+                    if (to.route && typeof to.route.afterEnter === 'function') to.route.afterEnter(to, from);
+                    if (typeof conf.afterEach === 'function') conf.afterEach(to, from);
+                    for (var j = 0; j < afterHooks.length; j++) afterHooks[j](to, from);
+                    bus.emit('change', { to: to, from: from, mode: mode || 'push' });
+                    return true;
+                });
+            });
+        }
+        
+        function onHashChange() {
+            transition(getHashPath(), 'hashchange');
+        }
+        
+        function navigate(path, cfg) {
+            var c = cfg || {};
+            var p = normalize(path || '/');
+            var full = p + buildQuery(c.query || null);
+            if (c.trigger === false) {
+                setHashPath(full, !!c.replace);
+                return Promise.resolve(true);
+            }
+            if (c.replace) {
+                setHashPath(full, true);
+                return transition(full, 'replace');
+            }
+            if (getHashPath() === full) return transition(full, 'push');
+            setHashPath(full, false);
+            return Promise.resolve(true);
+        }
+        
+        function start() {
+            if (started) return true;
+            started = true;
+            window.addEventListener('hashchange', onHashChange);
+            var first = getHashPath();
+            transition(first, 'start');
+            bus.emit('start', { path: first });
+            return true;
+        }
+        
+        function stop() {
+            if (!started) return true;
+            started = false;
+            window.removeEventListener('hashchange', onHashChange);
+            bus.emit('stop', { current: current });
+            return true;
+        }
+        
+        function addRoute(route) {
+            if (!route || !route.path) return false;
+            conf.routes.push(route);
+            return true;
+        }
+        
+        function removeRoute(pathOrName) {
+            var key = String(pathOrName || '');
+            var out = [];
+            var removed = false;
+            for (var i = 0; i < conf.routes.length; i++) {
+                if (conf.routes[i].path === key || conf.routes[i].name === key) removed = true;
+                else out.push(conf.routes[i]);
+            }
+            conf.routes = out;
+            return removed;
+        }
+        
+        function beforeEach(fn) {
+            if (typeof fn !== 'function') return function() {};
+            beforeHooks.push(fn);
+            return function() { beforeHooks = beforeHooks.filter(function(x) { return x !== fn; }); };
+        }
+        
+        function afterEach(fn) {
+            if (typeof fn !== 'function') return function() {};
+            afterHooks.push(fn);
+            return function() { afterHooks = afterHooks.filter(function(x) { return x !== fn; }); };
+        }
+        
+        return {
+            start: start,
+            stop: stop,
+            push: function(path, query) { return navigate(path, { query: query, replace: false, trigger: true }); },
+            replace: function(path, query) { return navigate(path, { query: query, replace: true, trigger: true }); },
+            go: function(delta) { history.go(delta || 0); return true; },
+            back: function() { history.back(); return true; },
+            current: function() { return current ? zClone(current) : null; },
+            match: function(path) { return resolve(path); },
+            addRoute: addRoute,
+            removeRoute: removeRoute,
+            routes: function() { return conf.routes.slice(); },
+            beforeEach: beforeEach,
+            afterEach: afterEach,
+            render: function(path) { return transition(path || getHashPath(), 'manual'); },
+            on: bus.on,
+            off: bus.off
+        };
+    };
+    
+    Z.createRouter = function(options) { return Z.routerx(options); };
+    
+    // ========== httpx ==========
+    Z.httpx = function(options) {
+        var conf = zMerge({
+            baseURL: '',
+            timeout: 15000,
+            retries: 0,
+            retryDelay: 300,
+            parse: 'auto',
+            headers: {},
+            credentials: 'same-origin'
+        }, options || {});
+        
+        var reqInterceptors = [];
+        var resInterceptors = [];
+        var errInterceptors = [];
+        
+        function useRequest(fn) {
+            if (typeof fn !== 'function') return function() {};
+            reqInterceptors.push(fn);
+            return function() { reqInterceptors = reqInterceptors.filter(function(x) { return x !== fn; }); };
+        }
+        
+        function useResponse(fn) {
+            if (typeof fn !== 'function') return function() {};
+            resInterceptors.push(fn);
+            return function() { resInterceptors = resInterceptors.filter(function(x) { return x !== fn; }); };
+        }
+        
+        function useError(fn) {
+            if (typeof fn !== 'function') return function() {};
+            errInterceptors.push(fn);
+            return function() { errInterceptors = errInterceptors.filter(function(x) { return x !== fn; }); };
+        }
+        
+        function withBase(url) {
+            var u = String(url || '');
+            if (/^https?:\/\//i.test(u)) return u;
+            var b = conf.baseURL || '';
+            if (!b) return u;
+            if (b.endsWith('/') && u.startsWith('/')) return b + u.slice(1);
+            if (!b.endsWith('/') && !u.startsWith('/')) return b + '/' + u;
+            return b + u;
+        }
+        
+        function buildQuery(query) {
+            if (!query || typeof query !== 'object') return '';
+            var out = [];
+            for (var k in query) {
+                var v = query[k];
+                if (v === undefined || v === null) continue;
+                if (Array.isArray(v)) {
+                    for (var i = 0; i < v.length; i++) out.push(encodeURIComponent(k) + '=' + encodeURIComponent(String(v[i])));
+                } else {
+                    out.push(encodeURIComponent(k) + '=' + encodeURIComponent(String(v)));
+                }
+            }
+            return out.length ? ('?' + out.join('&')) : '';
+        }
+        
+        function parseBody(data, headers) {
+            if (data === undefined || data === null) return null;
+            if (data instanceof FormData) return data;
+            if (data instanceof Blob) return data;
+            if (typeof data === 'string') return data;
+            var headerKey = Object.keys(headers).find(function(k) { return k.toLowerCase() === 'content-type'; });
+            var ctype = headerKey ? headers[headerKey] : '';
+            if (!ctype) {
+                headers['Content-Type'] = 'application/json';
+                return JSON.stringify(data);
+            }
+            if (ctype.indexOf('application/json') >= 0) return JSON.stringify(data);
+            if (ctype.indexOf('application/x-www-form-urlencoded') >= 0) {
+                var fd = new URLSearchParams();
+                for (var k in data) fd.append(k, data[k]);
+                return fd;
+            }
+            return data;
+        }
+        
+        function parseResponse(resp, mode) {
+            var contentType = resp.headers.get('content-type') || '';
+            var m = mode || conf.parse || 'auto';
+            if (m === 'raw') return Promise.resolve(resp);
+            if (m === 'json') return resp.json();
+            if (m === 'text') return resp.text();
+            if (contentType.indexOf('application/json') >= 0) return resp.json();
+            return resp.text();
+        }
+        
+        function runReq(cfg) {
+            var next = zClone(cfg);
+            for (var i = 0; i < reqInterceptors.length; i++) next = reqInterceptors[i](next) || next;
+            return next;
+        }
+        
+        function runRes(res) {
+            var next = res;
+            for (var i = 0; i < resInterceptors.length; i++) next = resInterceptors[i](next) || next;
+            return next;
+        }
+        
+        function runErr(err, cfg) {
+            var e = err;
+            for (var i = 0; i < errInterceptors.length; i++) {
+                try { e = errInterceptors[i](e, cfg) || e; } catch (_) {}
+            }
+            return e;
+        }
+        
+        function doFetch(cfg, attempt) {
+            var headers = zMerge(conf.headers || {}, cfg.headers || {});
+            var queryStr = buildQuery(cfg.query);
+            var finalUrl = withBase(cfg.url) + queryStr;
+            var timeout = typeof cfg.timeout === 'number' ? cfg.timeout : conf.timeout;
+            var method = String(cfg.method || 'GET').toUpperCase();
+            var retries = typeof cfg.retries === 'number' ? cfg.retries : conf.retries;
+            var retryDelay = typeof cfg.retryDelay === 'number' ? cfg.retryDelay : conf.retryDelay;
+            var ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            var timer = null;
+            if (ac && timeout > 0) timer = setTimeout(function() { ac.abort(); }, timeout);
+            
+            var req = runReq({
+                url: finalUrl,
+                method: method,
+                headers: headers,
+                body: method === 'GET' || method === 'HEAD' ? undefined : parseBody(cfg.data, headers),
+                credentials: cfg.credentials || conf.credentials,
+                signal: ac ? ac.signal : undefined
+            });
+            
+            return fetch(req.url, req).then(function(resp) {
+                if (timer) clearTimeout(timer);
+                return parseResponse(resp, cfg.parse || conf.parse).then(function(parsed) {
+                    var out = runRes({
+                        ok: resp.ok,
+                        status: resp.status,
+                        statusText: resp.statusText,
+                        headers: resp.headers,
+                        data: parsed,
+                        raw: resp,
+                        config: req
+                    });
+                    if (!out.ok && cfg.throwOnHTTPError !== false) {
+                        var err = new Error('HTTP ' + out.status + ' ' + out.statusText);
+                        err.response = out;
+                        throw err;
+                    }
+                    return out;
+                });
+            }).catch(function(e) {
+                if (timer) clearTimeout(timer);
+                if (attempt < retries) {
+                    return new Promise(function(resolve) { setTimeout(resolve, retryDelay * (attempt + 1)); }).then(function() {
+                        return doFetch(cfg, attempt + 1);
+                    });
+                }
+                throw runErr(e, cfg);
+            });
+        }
+        
+        function request(cfg) {
+            var base = zMerge({
+                url: '',
+                method: 'GET',
+                headers: {},
+                data: null,
+                query: null,
+                parse: conf.parse,
+                timeout: conf.timeout,
+                retries: conf.retries,
+                retryDelay: conf.retryDelay,
+                throwOnHTTPError: true
+            }, cfg || {});
+            return doFetch(base, 0);
+        }
+        
+        function create(nextOptions) {
+            return Z.httpx(zMerge(conf, nextOptions || {}));
+        }
+        
+        return {
+            request: request,
+            get: function(url, query, cfg) { return request(zMerge(cfg || {}, { url: url, method: 'GET', query: query || null })); },
+            post: function(url, data, cfg) { return request(zMerge(cfg || {}, { url: url, method: 'POST', data: data })); },
+            put: function(url, data, cfg) { return request(zMerge(cfg || {}, { url: url, method: 'PUT', data: data })); },
+            patch: function(url, data, cfg) { return request(zMerge(cfg || {}, { url: url, method: 'PATCH', data: data })); },
+            del: function(url, query, cfg) { return request(zMerge(cfg || {}, { url: url, method: 'DELETE', query: query || null })); },
+            upload: function(url, file, field, extra, cfg) {
+                var fd = new FormData();
+                fd.append(field || 'file', file);
+                var ext = extra || {};
+                for (var k in ext) fd.append(k, ext[k]);
+                return request(zMerge(cfg || {}, { url: url, method: 'POST', data: fd }));
+            },
+            useRequest: useRequest,
+            useResponse: useResponse,
+            useError: useError,
+            create: create,
+            config: function() { return zClone(conf); }
+        };
+    };
+    
+    Z.httpCreate = function(options) { return Z.httpx(options); };
+    Z._httpxDefault = Z._httpxDefault || Z.httpx();
+    Z.http = function(cfg) { return Z._httpxDefault.request(cfg); };
+    
+})(typeof window !== 'undefined' ? window : this);
+
+(function(global) {
+    'use strict';
+    
+    var Z = global.zxd || global.zxlite;
+    if (!Z) return;
+    
+    function zClone(v) { return Z.clone ? Z.clone(v) : JSON.parse(JSON.stringify(v)); }
+    function zMerge(a, b) { return Z.merge ? Z.merge(a, b) : Object.assign({}, a || {}, b || {}); }
+    function zGet(obj, path, fallback) { return Z.pathGet ? Z.pathGet(obj, path, fallback) : fallback; }
+    function zSet(obj, path, value) { return Z.pathSet ? Z.pathSet(obj, path, value) : obj; }
+    function zType(v) { return Z.type ? Z.type(v) : typeof v; }
+    function zNow() { return Date.now(); }
+    
+    function emitter() {
+        if (Z.busCreate) {
+            var bus = Z.busCreate({ replayLimit: 10, debug: false });
+            return {
+                on: bus.on,
+                off: bus.off,
+                emit: bus.emit,
+                once: bus.once,
+                clear: bus.clear
+            };
+        }
+        var map = new Map();
+        return {
+            on: function(k, fn) { if (!map.has(k)) map.set(k, []); map.get(k).push(fn); return function() {}; },
+            off: function() { return true; },
+            emit: function(k, p) { (map.get(k) || []).forEach(function(fn) { fn(p); }); return true; },
+            once: function() { return function() {}; },
+            clear: function() { map.clear(); return true; }
+        };
+    }
+    
+    // ========== storex ==========
+    Z.storex = function(options) {
+        var conf = zMerge({
+            name: 'default',
+            strict: false,
+            state: {},
+            getters: {},
+            mutations: {},
+            actions: {},
+            modules: {},
+            persist: null
+        }, options || {});
+        
+        var state = zClone(conf.state || {});
+        var bus = emitter();
+        var moduleMap = {};
+        var unsubs = [];
+        var lock = false;
+        var active = true;
+        
+        function assertMutation() {
+            if (conf.strict && !lock) throw new Error('storex strict mode: mutate only in commit/setState');
+        }
+        
+        function getStorage() {
+            var p = conf.persist;
+            if (!p || p.enabled === false) return null;
+            try {
+                if ((p.mode || 'local') === 'session') return window.sessionStorage;
+                return window.localStorage;
+            } catch (e) {
+                return null;
+            }
+        }
+        
+        function persistKey() {
+            var p = conf.persist || {};
+            return p.key || ('zxlite_storex_' + conf.name);
+        }
+        
+        function persistSave() {
+            var st = getStorage();
+            if (!st) return false;
+            try {
+                st.setItem(persistKey(), JSON.stringify({
+                    name: conf.name,
+                    ts: zNow(),
+                    state: state
+                }));
+                return true;
+            } catch (e) {
+                console.warn('storex persist save failed:', e.message);
+                return false;
+            }
+        }
+        
+        function persistLoad() {
+            var st = getStorage();
+            if (!st) return null;
+            try {
+                var raw = st.getItem(persistKey());
+                if (!raw) return null;
+                var parsed = JSON.parse(raw);
+                return parsed && parsed.state ? parsed.state : null;
+            } catch (e) {
+                return null;
+            }
+        }
+        
+        function setState(path, value, meta) {
+            if (!active) return false;
+            assertMutation();
+            lock = true;
+            if (typeof path === 'string' || Array.isArray(path)) zSet(state, path, value);
+            else if (zType(path) === 'object') state = zMerge(state, path);
+            lock = false;
+            bus.emit('change', {
+                type: 'setState',
+                path: path,
+                value: zClone(value),
+                state: zClone(state),
+                meta: meta || {}
+            });
+            persistSave();
+            return true;
+        }
+        
+        function replaceState(nextState, meta) {
+            if (!active) return false;
+            assertMutation();
+            lock = true;
+            state = zClone(nextState || {});
+            lock = false;
+            bus.emit('change', {
+                type: 'replaceState',
+                state: zClone(state),
+                meta: meta || {}
+            });
+            persistSave();
+            return true;
+        }
+        
+        function getState(path, fallback) {
+            if (!path) return zClone(state);
+            return zGet(state, path, fallback);
+        }
+        
+        function getGetter(name) {
+            var fn = conf.getters[name];
+            if (typeof fn !== 'function') return undefined;
+            try {
+                return fn(state, getterProxy);
+            } catch (e) {
+                console.error('storex getter error:', name, e);
+                return undefined;
+            }
+        }
+        
+        function allGetters() {
+            var out = {};
+            for (var k in conf.getters) out[k] = getGetter(k);
+            return out;
+        }
+        
+        function commit(type, payload, meta) {
+            if (!active) return false;
+            var fn = conf.mutations[type];
+            if (typeof fn !== 'function') return false;
+            lock = true;
+            fn(state, payload, { type: type, meta: meta || {} });
+            lock = false;
+            bus.emit('mutation', {
+                type: type,
+                payload: zClone(payload),
+                state: zClone(state),
+                meta: meta || {}
+            });
+            bus.emit('change', {
+                type: 'mutation',
+                mutation: type,
+                payload: zClone(payload),
+                state: zClone(state),
+                meta: meta || {}
+            });
+            persistSave();
+            return true;
+        }
+        
+        function dispatch(type, payload, meta) {
+            if (!active) return Promise.resolve(false);
+            var fn = conf.actions[type];
+            if (typeof fn !== 'function') return Promise.resolve(false);
+            var ctx = {
+                state: state,
+                rootState: state,
+                getters: getterProxy,
+                getState: getState,
+                setState: function(path, value, m) {
+                    lock = true;
+                    var ok = setState(path, value, m);
+                    lock = false;
+                    return ok;
+                },
+                commit: commit,
+                dispatch: dispatch,
+                emit: bus.emit,
+                module: moduleProxy
+            };
+            bus.emit('action:start', { type: type, payload: zClone(payload), meta: meta || {} });
+            return Promise.resolve(fn(ctx, payload, { type: type, meta: meta || {} })).then(function(result) {
+                bus.emit('action:done', { type: type, payload: zClone(payload), result: zClone(result), meta: meta || {} });
+                return result;
+            }).catch(function(e) {
+                bus.emit('action:error', { type: type, payload: zClone(payload), error: e, meta: meta || {} });
+                throw e;
+            });
+        }
+        
+        function watch(path, handler, cfg) {
+            if (typeof handler !== 'function') return function() {};
+            var opt = cfg || {};
+            var deep = opt.deep !== false;
+            var oldVal = getState(path);
+            if (opt.immediate) handler(zClone(oldVal), undefined, { immediate: true, path: path });
+            var un = bus.on('change', function(info) {
+                var next = getState(path);
+                var changed = deep ? JSON.stringify(next) !== JSON.stringify(oldVal) : next !== oldVal;
+                if (!changed) return;
+                var prev = oldVal;
+                oldVal = zClone(next);
+                handler(zClone(next), zClone(prev), info);
+            });
+            unsubs.push(un);
+            return un;
+        }
+        
+        function subscribe(handler, cfg) {
+            if (typeof handler !== 'function') return function() {};
+            var topic = cfg && cfg.topic ? cfg.topic : 'change';
+            var un = bus.on(topic, handler, cfg || {});
+            unsubs.push(un);
+            return un;
+        }
+        
+        function registerModule(name, mod) {
+            if (!name || zType(mod) !== 'object') return false;
+            if (moduleMap[name]) return false;
+            moduleMap[name] = {
+                state: zClone(mod.state || {}),
+                getters: mod.getters || {},
+                mutations: mod.mutations || {},
+                actions: mod.actions || {}
+            };
+            lock = true;
+            state[name] = zClone(moduleMap[name].state);
+            lock = false;
+            var prefix = name + '/';
+            for (var mk in moduleMap[name].mutations) {
+                (function(mkName) {
+                    conf.mutations[prefix + mkName] = function(rootState, payload, info) {
+                        moduleMap[name].mutations[mkName](rootState[name], payload, info);
+                    };
+                })(mk);
+            }
+            for (var ak in moduleMap[name].actions) {
+                (function(akName) {
+                    conf.actions[prefix + akName] = function(ctx, payload, info) {
+                        var childCtx = zMerge(ctx, { state: state[name], rootState: state });
+                        return moduleMap[name].actions[akName](childCtx, payload, info);
+                    };
+                })(ak);
+            }
+            for (var gk in moduleMap[name].getters) {
+                (function(gkName) {
+                    conf.getters[prefix + gkName] = function(rootState, getters) {
+                        return moduleMap[name].getters[gkName](rootState[name], getters, rootState);
+                    };
+                })(gk);
+            }
+            bus.emit('module:register', { name: name, state: zClone(state[name]) });
+            persistSave();
+            return true;
+        }
+        
+        function unregisterModule(name) {
+            if (!moduleMap[name]) return false;
+            var prefix = name + '/';
+            for (var mk in conf.mutations) if (mk.indexOf(prefix) === 0) delete conf.mutations[mk];
+            for (var ak in conf.actions) if (ak.indexOf(prefix) === 0) delete conf.actions[ak];
+            for (var gk in conf.getters) if (gk.indexOf(prefix) === 0) delete conf.getters[gk];
+            lock = true;
+            delete state[name];
+            lock = false;
+            delete moduleMap[name];
+            bus.emit('module:unregister', { name: name });
+            persistSave();
+            return true;
+        }
+        
+        function snapshot() {
+            return {
+                name: conf.name,
+                ts: zNow(),
+                state: zClone(state),
+                getters: allGetters(),
+                modules: Object.keys(moduleMap)
+            };
+        }
+        
+        function reset(nextState) {
+            lock = true;
+            state = zClone(nextState || conf.state || {});
+            lock = false;
+            bus.emit('change', { type: 'reset', state: zClone(state) });
+            persistSave();
+            return true;
+        }
+        
+        function hotUpdate(patch) {
+            if (zType(patch) !== 'object') return false;
+            if (patch.getters && zType(patch.getters) === 'object') conf.getters = zMerge(conf.getters, patch.getters);
+            if (patch.mutations && zType(patch.mutations) === 'object') conf.mutations = zMerge(conf.mutations, patch.mutations);
+            if (patch.actions && zType(patch.actions) === 'object') conf.actions = zMerge(conf.actions, patch.actions);
+            return true;
+        }
+        
+        function destroy() {
+            if (!active) return true;
+            active = false;
+            for (var i = 0; i < unsubs.length; i++) {
+                try { unsubs[i](); } catch (e) {}
+            }
+            unsubs = [];
+            bus.clear();
+            return true;
+        }
+        
+        var getterProxy = {
+            get: function(name) { return getGetter(name); }
+        };
+        Object.defineProperty(getterProxy, 'all', {
+            enumerable: true,
+            get: function() { return allGetters(); }
+        });
+        
+        var moduleProxy = {
+            register: registerModule,
+            unregister: unregisterModule,
+            has: function(name) { return !!moduleMap[name]; },
+            list: function() { return Object.keys(moduleMap); }
+        };
+        
+        for (var mn in conf.modules) registerModule(mn, conf.modules[mn]);
+        var loaded = persistLoad();
+        if (loaded) {
+            lock = true;
+            state = zMerge(state, loaded);
+            lock = false;
+        }
+        
+        return {
+            name: conf.name,
+            state: function(path, fallback) { return getState(path, fallback); },
+            getState: getState,
+            setState: function(path, value, meta) { lock = true; var ok = setState(path, value, meta); lock = false; return ok; },
+            replaceState: function(nextState, meta) { lock = true; var ok = replaceState(nextState, meta); lock = false; return ok; },
+            commit: commit,
+            dispatch: dispatch,
+            watch: watch,
+            subscribe: subscribe,
+            getters: getterProxy,
+            module: moduleProxy,
+            persistSave: persistSave,
+            persistLoad: persistLoad,
+            snapshot: snapshot,
+            reset: reset,
+            hotUpdate: hotUpdate,
+            destroy: destroy,
+            on: bus.on,
+            off: bus.off
+        };
+    };
+    
+    Z.createStore = function(options) { return Z.storex(options); };
+    
+    // ========== cachex ==========
+    Z.cachex = function(options) {
+        var conf = zMerge({
+            namespace: 'zxlite',
+            mode: 'memory',
+            defaultTTL: 0,
+            clone: true
+        }, options || {});
+        
+        var mem = new Map();
+        
+        function k(name) { return conf.namespace + ':' + String(name); }
+        function now() { return Date.now(); }
+        
+        function storage() {
+            try {
+                if (conf.mode === 'local') return window.localStorage;
+                if (conf.mode === 'session') return window.sessionStorage;
+            } catch (e) {}
+            return null;
+        }
+        
+        function write(key, payload) {
+            var st = storage();
+            if (!st) { mem.set(key, payload); return true; }
+            try {
+                st.setItem(key, JSON.stringify(payload));
+                return true;
+            } catch (e) {
+                mem.set(key, payload);
+                return false;
+            }
+        }
+        
+        function read(key) {
+            var st = storage();
+            if (!st) return mem.get(key) || null;
+            var raw = st.getItem(key);
+            if (raw == null) return mem.get(key) || null;
+            try {
+                return JSON.parse(raw);
+            } catch (e) {
+                return mem.get(key) || null;
+            }
+        }
+        
+        function delRaw(key) {
+            var st = storage();
+            if (st) st.removeItem(key);
+            mem.delete(key);
+            return true;
+        }
+        
+        function expired(entry) {
+            if (!entry) return true;
+            if (!entry.expireAt) return false;
+            return now() >= entry.expireAt;
+        }
+        
+        function set(name, value, ttl, meta) {
+            var t = typeof ttl === 'number' ? ttl : conf.defaultTTL;
+            return write(k(name), {
+                value: conf.clone ? zClone(value) : value,
+                createAt: now(),
+                updateAt: now(),
+                expireAt: t > 0 ? now() + t : 0,
+                meta: zClone(meta || {})
+            });
+        }
+        
+        function get(name, fallback) {
+            var key = k(name);
+            var entry = read(key);
+            if (!entry) return fallback;
+            if (expired(entry)) {
+                delRaw(key);
+                return fallback;
+            }
+            return conf.clone ? zClone(entry.value) : entry.value;
+        }
+        
+        function entry(name) {
+            var key = k(name);
+            var val = read(key);
+            if (!val) return null;
+            if (expired(val)) {
+                delRaw(key);
+                return null;
+            }
+            return zClone(val);
+        }
+        
+        function has(name) { return entry(name) !== null; }
+        
+        function touch(name, ttl) {
+            var key = k(name);
+            var e = read(key);
+            if (!e || expired(e)) {
+                delRaw(key);
+                return false;
+            }
+            var t = typeof ttl === 'number' ? ttl : conf.defaultTTL;
+            e.updateAt = now();
+            e.expireAt = t > 0 ? now() + t : 0;
+            return write(key, e);
+        }
+        
+        function remove(name) { return delRaw(k(name)); }
+        
+        function clear() {
+            var prefix = conf.namespace + ':';
+            var st = storage();
+            if (st) {
+                var all = [];
+                for (var i = 0; i < st.length; i++) {
+                    var key = st.key(i);
+                    if (key && key.indexOf(prefix) === 0) all.push(key);
+                }
+                for (var j = 0; j < all.length; j++) st.removeItem(all[j]);
+            }
+            var mkeys = Array.from(mem.keys());
+            for (var m = 0; m < mkeys.length; m++) if (mkeys[m].indexOf(prefix) === 0) mem.delete(mkeys[m]);
+            return true;
+        }
+        
+        function keys() {
+            var prefix = conf.namespace + ':';
+            var out = [];
+            var st = storage();
+            if (st) {
+                for (var i = 0; i < st.length; i++) {
+                    var key = st.key(i);
+                    if (key && key.indexOf(prefix) === 0) out.push(key.slice(prefix.length));
+                }
+            }
+            mem.forEach(function(_, key) {
+                if (key.indexOf(prefix) === 0) {
+                    var nk = key.slice(prefix.length);
+                    if (out.indexOf(nk) === -1) out.push(nk);
+                }
+            });
+            return out;
+        }
+        
+        function clean() {
+            var list = keys();
+            var removed = 0;
+            for (var i = 0; i < list.length; i++) {
+                if (entry(list[i]) === null) removed++;
+            }
+            return removed;
+        }
+        
+        function stats() {
+            var list = keys();
+            var expiring = 0;
+            var forever = 0;
+            for (var i = 0; i < list.length; i++) {
+                var e = entry(list[i]);
+                if (!e) continue;
+                if (e.expireAt) expiring++;
+                else forever++;
+            }
+            return {
+                namespace: conf.namespace,
+                mode: conf.mode,
+                size: list.length,
+                expiring: expiring,
+                forever: forever
+            };
+        }
+        
+        return {
+            set: set,
+            get: get,
+            entry: entry,
+            has: has,
+            touch: touch,
+            remove: remove,
+            clear: clear,
+            keys: keys,
+            clean: clean,
+            size: function() { return keys().length; },
+            stats: stats
+        };
+    };
+    
+    Z.cacheCreate = function(options) { return Z.cachex(options); };
+    Z._cachexDefault = Z._cachexDefault || Z.cachex({ namespace: 'zxlite_default', mode: 'memory', defaultTTL: 0 });
+    Z.cacheSet = function(key, value, ttl, meta) { return Z._cachexDefault.set(key, value, ttl, meta); };
+    Z.cacheGet = function(key, fallback) { return Z._cachexDefault.get(key, fallback); };
+    Z.cacheHas = function(key) { return Z._cachexDefault.has(key); };
+    Z.cacheDel = function(key) { return Z._cachexDefault.remove(key); };
+    Z.cacheClear = function() { return Z._cachexDefault.clear(); };
+    
+    // ========== queuex ==========
+    Z.queuex = function(options) {
+        var conf = zMerge({
+            name: 'queue',
+            concurrency: 1,
+            retry: 0,
+            retryDelay: 0,
+            autoStart: true
+        }, options || {});
+        
+        var waiting = [];
+        var running = 0;
+        var paused = !conf.autoStart;
+        var destroyed = false;
+        var bus = emitter();
+        var stats = { added: 0, done: 0, failed: 0, canceled: 0 };
+        
+        function sortWaiting() {
+            waiting.sort(function(a, b) {
+                if (a.priority === b.priority) return a.createAt - b.createAt;
+                return b.priority - a.priority;
+            });
+        }
+        
+        function runWithTimeout(fn, timeout) {
+            if (!timeout || timeout <= 0) return Promise.resolve().then(fn);
+            return Promise.race([
+                Promise.resolve().then(fn),
+                new Promise(function(_, reject) {
+                    setTimeout(function() { reject(new Error('queuex timeout ' + timeout + 'ms')); }, timeout);
+                })
+            ]);
+        }
+        
+        function execute(task) {
+            if (task.canceled) {
+                stats.canceled++;
+                task.reject(new Error('task canceled'));
+                bus.emit('cancel', { id: task.id, meta: task.meta });
+                return Promise.resolve(false);
+            }
+            running++;
+            task.tries++;
+            bus.emit('start', { id: task.id, tries: task.tries, meta: task.meta });
+            return runWithTimeout(function() {
+                return task.fn({
+                    id: task.id,
+                    tries: task.tries,
+                    meta: task.meta,
+                    queue: api
+                });
+            }, task.timeout).then(function(result) {
+                running--;
+                stats.done++;
+                task.resolve(result);
+                bus.emit('done', { id: task.id, tries: task.tries, result: zClone(result), meta: task.meta });
+                pump();
+                return true;
+            }).catch(function(e) {
+                running--;
+                if (task.tries <= task.retry) {
+                    bus.emit('retry', { id: task.id, tries: task.tries, error: e, meta: task.meta });
+                    setTimeout(function() {
+                        waiting.push(task);
+                        sortWaiting();
+                        pump();
+                    }, task.retryDelay);
+                    return false;
+                }
+                stats.failed++;
+                task.reject(e);
+                bus.emit('error', { id: task.id, tries: task.tries, error: e, meta: task.meta });
+                pump();
+                return false;
+            });
+        }
+        
+        function pump() {
+            if (destroyed || paused) return;
+            while (running < conf.concurrency && waiting.length) {
+                execute(waiting.shift());
+            }
+            if (running === 0 && waiting.length === 0) {
+                bus.emit('idle', snapshot());
+            }
+        }
+        
+        function add(fn, opt) {
+            if (destroyed) return Promise.reject(new Error('queuex destroyed'));
+            if (typeof fn !== 'function') return Promise.reject(new Error('queuex task must be function'));
+            var c = zMerge({
+                id: 'task_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8),
+                priority: 0,
+                retry: conf.retry,
+                retryDelay: conf.retryDelay,
+                timeout: 0,
+                meta: {}
+            }, opt || {});
+            stats.added++;
+            return new Promise(function(resolve, reject) {
+                waiting.push({
+                    id: c.id,
+                    fn: fn,
+                    priority: c.priority,
+                    retry: c.retry,
+                    retryDelay: c.retryDelay,
+                    timeout: c.timeout,
+                    meta: c.meta,
+                    createAt: zNow(),
+                    tries: 0,
+                    canceled: false,
+                    resolve: resolve,
+                    reject: reject
+                });
+                sortWaiting();
+                bus.emit('add', { id: c.id, waiting: waiting.length, meta: c.meta });
+                pump();
+            });
+        }
+        
+        function pause() { paused = true; bus.emit('pause', snapshot()); return true; }
+        function resume() { paused = false; bus.emit('resume', snapshot()); pump(); return true; }
+        
+        function clear(reason) {
+            var r = reason || 'queue cleared';
+            while (waiting.length) {
+                var task = waiting.shift();
+                task.canceled = true;
+                task.reject(new Error(r));
+                stats.canceled++;
+            }
+            bus.emit('clear', snapshot());
+            return true;
+        }
+        
+        function cancel(id) {
+            for (var i = 0; i < waiting.length; i++) {
+                if (waiting[i].id === id) {
+                    var task = waiting.splice(i, 1)[0];
+                    task.canceled = true;
+                    task.reject(new Error('task canceled: ' + id));
+                    stats.canceled++;
+                    bus.emit('cancel', { id: id, by: 'manual' });
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        function idle() {
+            if (running === 0 && waiting.length === 0) return Promise.resolve(snapshot());
+            return new Promise(function(resolve) {
+                var un = bus.on('idle', function(info) {
+                    if (typeof un === 'function') un();
+                    resolve(info);
+                });
+            });
+        }
+        
+        function snapshot() {
+            return {
+                name: conf.name,
+                paused: paused,
+                running: running,
+                waiting: waiting.length,
+                stats: zClone(stats)
+            };
+        }
+        
+        function destroy() {
+            destroyed = true;
+            clear('queue destroyed');
+            bus.clear();
+            return true;
+        }
+        
+        var api = {
+            add: add,
+            pause: pause,
+            resume: resume,
+            clear: clear,
+            cancel: cancel,
+            idle: idle,
+            snapshot: snapshot,
+            stats: function() { return zClone(stats); },
+            on: bus.on,
+            off: bus.off,
+            destroy: destroy
+        };
+        
+        return api;
+    };
+    
+    Z.queueCreate = function(options) { return Z.queuex(options); };
+    
+})(typeof window !== 'undefined' ? window : this);
