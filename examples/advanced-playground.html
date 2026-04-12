@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>zxlite v2.0 Advanced Playground</title>
+  <script src="../zxlite.js"></script>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --primary: #0f766e;
+      --primary-2: #0ea5e9;
+      --danger: #dc2626;
+      --ok: #059669;
+      --warn: #d97706;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at top left, #ecfeff, transparent 40%),
+                  radial-gradient(circle at bottom right, #fef3c7, transparent 35%),
+                  var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap {
+      max-width: 1240px;
+      margin: 28px auto;
+      padding: 0 16px 40px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .title h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+    .title p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .quick {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .card {
+      grid-column: span 6;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    }
+    .card.wide { grid-column: span 12; }
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .muted { color: var(--muted); font-size: 13px; }
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin: 8px 0;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin: 8px 0;
+    }
+    input, textarea, select {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 14px;
+      width: 100%;
+      outline: none;
+      background: #fff;
+      color: var(--text);
+    }
+    textarea { min-height: 90px; resize: vertical; }
+    button {
+      border: 0;
+      background: var(--primary);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: .2s ease;
+    }
+    button:hover { opacity: .92; transform: translateY(-1px); }
+    button.ghost {
+      background: transparent;
+      border: 1px solid var(--line);
+      color: var(--text);
+    }
+    button.warn { background: var(--warn); }
+    button.ok { background: var(--ok); }
+    button.danger { background: var(--danger); }
+    .log {
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 10px;
+      min-height: 150px;
+      max-height: 260px;
+      overflow: auto;
+      background: #f8fafc;
+      font-family: "Cascadia Mono", "Consolas", monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .kv {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 8px;
+      margin: 6px 0;
+      font-size: 13px;
+    }
+    .tag {
+      display: inline-block;
+      border-radius: 99px;
+      border: 1px solid var(--line);
+      padding: 3px 8px;
+      font-size: 12px;
+      color: var(--muted);
+      background: #fff;
+    }
+    .divider {
+      border-top: 1px solid var(--line);
+      margin: 12px 0;
+    }
+    .todo-list {
+      margin: 0;
+      padding-left: 18px;
+    }
+    .todo-list li {
+      margin: 5px 0;
+      line-height: 1.5;
+    }
+    .router-links a {
+      display: inline-block;
+      margin-right: 8px;
+      text-decoration: none;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: #f1f5f9;
+      color: var(--text);
+      border: 1px solid var(--line);
+    }
+    .router-view {
+      border: 1px dashed var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      min-height: 80px;
+      background: #fafafa;
+    }
+    @media (max-width: 920px) {
+      .card { grid-column: span 12; }
+      .header { flex-direction: column; align-items: stretch; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="header">
+      <div class="title">
+        <h1>zxlite v2.0 高级模块演示</h1>
+        <p>这个页面串联演示 <code>busx/storex/routerx/httpx/cachex/queuex/validx/tplx/datex</code>，打开浏览器控制台可看到更多细节。</p>
+      </div>
+      <div class="quick">
+        <button class="ghost" id="btnThemeLight">浅色主题</button>
+        <button class="ghost" id="btnThemeDark">深色主题</button>
+        <button id="btnToast">全局 Toast</button>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Storex 计数器 <span class="tag" id="storeGetterTag">double: 0</span></h2>
+        <div class="kv"><span>count</span><strong id="countValue">0</strong></div>
+        <div class="kv"><span>user.name</span><strong id="userValue">-</strong></div>
+        <div class="row">
+          <button id="btnInc">+1 commit</button>
+          <button id="btnInc5">+5 commit</button>
+          <button id="btnAsyncInc" class="ok">async +3 dispatch</button>
+          <button id="btnSetUser" class="warn">set user</button>
+          <button id="btnResetStore" class="danger">reset</button>
+        </div>
+        <div class="muted">该模块演示 strict 模式、getter、mutation、action、watch。</div>
+      </article>
+
+      <article class="card">
+        <h2>Busx 事件流</h2>
+        <div class="row">
+          <button id="btnEmitOrder">emit order:create</button>
+          <button id="btnEmitMulti">emitMany</button>
+          <button id="btnBusWait" class="ok">wait next order</button>
+          <button id="btnClearBus" class="danger">clear history</button>
+        </div>
+        <div class="log" id="busLog"></div>
+      </article>
+
+      <article class="card">
+        <h2>Cachex</h2>
+        <div class="field">
+          <label>Key</label>
+          <input id="cacheKey" value="demo:user" />
+        </div>
+        <div class="field">
+          <label>Value(JSON)</label>
+          <textarea id="cacheValue">{ "name": "Tom", "role": "admin" }</textarea>
+        </div>
+        <div class="row">
+          <button id="btnCacheSet">set ttl=10s</button>
+          <button id="btnCacheGet">get</button>
+          <button id="btnCacheTouch">touch +10s</button>
+          <button id="btnCacheRemove" class="warn">remove</button>
+          <button id="btnCacheClear" class="danger">clear</button>
+        </div>
+        <div class="log" id="cacheLog"></div>
+      </article>
+
+      <article class="card">
+        <h2>Queuex 并发任务队列</h2>
+        <div class="row">
+          <button id="btnQueueAdd">添加 5 个任务</button>
+          <button id="btnQueuePause" class="warn">pause</button>
+          <button id="btnQueueResume" class="ok">resume</button>
+          <button id="btnQueueClear" class="danger">clear</button>
+          <button id="btnQueueIdle">await idle</button>
+        </div>
+        <div class="kv"><span>snapshot</span><code id="queueState">{}</code></div>
+        <div class="log" id="queueLog"></div>
+      </article>
+
+      <article class="card">
+        <h2>Validx 表单校验</h2>
+        <div class="field"><label>用户名</label><input id="formName" value="tom" /></div>
+        <div class="field"><label>邮箱</label><input id="formEmail" value="tom@example.com" /></div>
+        <div class="field"><label>密码</label><input id="formPwd" type="password" value="123456" /></div>
+        <div class="field"><label>确认密码</label><input id="formPwd2" type="password" value="123456" /></div>
+        <div class="row">
+          <button id="btnValidateSync">同步校验</button>
+          <button id="btnValidateAsync" class="ok">异步校验</button>
+        </div>
+        <div class="log" id="validLog"></div>
+      </article>
+
+      <article class="card">
+        <h2>Tplx 模板与组件</h2>
+        <div class="row">
+          <button id="btnTplRender">render</button>
+          <button id="btnTplPatch">patch state</button>
+          <button id="btnTplComp">render component</button>
+        </div>
+        <div class="divider"></div>
+        <div id="tplMount"></div>
+        <div class="divider"></div>
+        <div id="tplComp"></div>
+      </article>
+
+      <article class="card wide">
+        <h2>Routerx + Httpx + Datex + Pipeline</h2>
+        <div class="router-links">
+          <a href="#/">首页</a>
+          <a href="#/list">列表</a>
+          <a href="#/detail/42">详情42</a>
+          <a href="#/missing">404</a>
+        </div>
+        <div class="router-view" id="routerView"></div>
+        <div class="divider"></div>
+        <div class="row">
+          <button id="btnFetchPosts">httpx 拉取 posts</button>
+          <button id="btnRunPipeline">pipeline 演示</button>
+          <button id="btnRunRetry">retry 演示</button>
+        </div>
+        <div class="log" id="mainLog"></div>
+      </article>
+    </section>
+  </div>
+
+  <script>
+    // 工具
+    function log(el, text) {
+      var box = document.getElementById(el);
+      if (!box) return;
+      box.textContent += '[' + zxd.datex.format(new Date(), 'HH:mm:ss') + '] ' + text + '\n';
+      box.scrollTop = box.scrollHeight;
+    }
+    function pretty(v) {
+      try { return JSON.stringify(v, null, 2); } catch (e) { return String(v); }
+    }
+
+    // 主题
+    document.getElementById('btnThemeLight').onclick = function() {
+      zxd.style('light2', '#0f766e');
+    };
+    document.getElementById('btnThemeDark').onclick = function() {
+      zxd.style('dark3', '#0ea5e9');
+    };
+    document.getElementById('btnToast').onclick = function() {
+      zxd.toast('zxlite v2.0 playground ready', 1800);
+    };
+
+    // 1) storex
+    var store = zxd.createStore({
+      name: 'playground',
+      strict: true,
+      state: { count: 0, user: { name: '-' } },
+      getters: {
+        double: function(s) { return s.count * 2; }
+      },
+      mutations: {
+        inc: function(s, step) { s.count += (step || 1); },
+        setUser: function(s, user) { s.user = user; }
+      },
+      actions: {
+        asyncInc: function(ctx, step) {
+          return zxd.wait(250).then(function() {
+            ctx.commit('inc', step || 1);
+            return ctx.getState('count');
+          });
+        }
+      }
+    });
+
+    function renderStore() {
+      document.getElementById('countValue').textContent = store.getState('count');
+      document.getElementById('userValue').textContent = store.getState('user.name');
+      document.getElementById('storeGetterTag').textContent = 'double: ' + store.getters.get('double');
+    }
+    store.watch('count', function(next, prev) {
+      log('mainLog', 'store.watch count ' + prev + ' -> ' + next);
+      renderStore();
+    }, { immediate: true });
+
+    document.getElementById('btnInc').onclick = function() { store.commit('inc', 1); };
+    document.getElementById('btnInc5').onclick = function() { store.commit('inc', 5); };
+    document.getElementById('btnAsyncInc').onclick = function() { store.dispatch('asyncInc', 3); };
+    document.getElementById('btnSetUser').onclick = function() {
+      store.commit('setUser', { name: 'User_' + Math.floor(Math.random() * 100) });
+      renderStore();
+    };
+    document.getElementById('btnResetStore').onclick = function() {
+      store.reset({ count: 0, user: { name: '-' } });
+      renderStore();
+    };
+
+    // 2) busx
+    var bus = zxd.busCreate({ replayLimit: 120, debug: false });
+    bus.on('order:create', function(payload) {
+      log('busLog', 'order:create => ' + pretty(payload));
+    });
+    bus.on('order:paid', function(payload) {
+      log('busLog', 'order:paid => ' + pretty(payload));
+    });
+    document.getElementById('btnEmitOrder').onclick = function() {
+      var id = 'ORD-' + Math.floor(Math.random() * 10000);
+      bus.emit('order:create', { id: id, amount: Math.floor(Math.random() * 999) + 1 });
+    };
+    document.getElementById('btnEmitMulti').onclick = function() {
+      bus.emitMany(['order:create', 'order:paid'], { id: 'ORD-BATCH', at: Date.now() });
+    };
+    document.getElementById('btnBusWait').onclick = function() {
+      log('busLog', 'waiting next order:create (3s timeout)...');
+      bus.wait('order:create', 3000).then(function(evt) {
+        log('busLog', 'wait resolved => ' + pretty(evt.payload));
+      }).catch(function(e) {
+        log('busLog', 'wait timeout => ' + e.message);
+      });
+    };
+    document.getElementById('btnClearBus').onclick = function() {
+      bus.clear();
+      document.getElementById('busLog').textContent = '';
+    };
+
+    // 3) cachex
+    var cache = zxd.cacheCreate({ namespace: 'play', mode: 'memory', defaultTTL: 0 });
+    document.getElementById('btnCacheSet').onclick = function() {
+      var key = document.getElementById('cacheKey').value.trim();
+      var text = document.getElementById('cacheValue').value.trim();
+      var val = text;
+      try { val = JSON.parse(text); } catch (_) {}
+      cache.set(key, val, 10000, { source: 'playground' });
+      log('cacheLog', 'set ' + key + ' ttl=10s');
+      log('cacheLog', 'stats => ' + pretty(cache.stats()));
+    };
+    document.getElementById('btnCacheGet').onclick = function() {
+      var key = document.getElementById('cacheKey').value.trim();
+      var val = cache.get(key, null);
+      log('cacheLog', 'get ' + key + ' => ' + pretty(val));
+    };
+    document.getElementById('btnCacheTouch').onclick = function() {
+      var key = document.getElementById('cacheKey').value.trim();
+      var ok = cache.touch(key, 10000);
+      log('cacheLog', 'touch ' + key + ' => ' + ok);
+    };
+    document.getElementById('btnCacheRemove').onclick = function() {
+      var key = document.getElementById('cacheKey').value.trim();
+      cache.remove(key);
+      log('cacheLog', 'remove ' + key);
+    };
+    document.getElementById('btnCacheClear').onclick = function() {
+      cache.clear();
+      log('cacheLog', 'clear all');
+    };
+
+    // 4) queuex
+    var queue = zxd.queueCreate({ name: 'demo', concurrency: 2, retry: 1, retryDelay: 200 });
+    function renderQueueState() {
+      document.getElementById('queueState').textContent = pretty(queue.snapshot());
+    }
+    queue.on('add', function(e) { log('queueLog', 'add => ' + pretty(e)); renderQueueState(); });
+    queue.on('start', function(e) { log('queueLog', 'start => ' + pretty(e)); renderQueueState(); });
+    queue.on('done', function(e) { log('queueLog', 'done => ' + pretty(e)); renderQueueState(); });
+    queue.on('error', function(e) { log('queueLog', 'error => ' + e.error.message); renderQueueState(); });
+    queue.on('idle', function(e) { log('queueLog', 'idle => ' + pretty(e)); renderQueueState(); });
+
+    document.getElementById('btnQueueAdd').onclick = function() {
+      for (var i = 1; i <= 5; i++) {
+        (function(index) {
+          queue.add(function() {
+            return zxd.wait(200 + Math.random() * 600).then(function() {
+              if (Math.random() < 0.18) throw new Error('随机失败 #' + index);
+              return { index: index, ok: true };
+            });
+          }, { priority: index % 2 === 0 ? 5 : 1, meta: { index: index } });
+        })(i);
+      }
+      renderQueueState();
+    };
+    document.getElementById('btnQueuePause').onclick = function() { queue.pause(); renderQueueState(); };
+    document.getElementById('btnQueueResume').onclick = function() { queue.resume(); renderQueueState(); };
+    document.getElementById('btnQueueClear').onclick = function() { queue.clear('manual clear'); renderQueueState(); };
+    document.getElementById('btnQueueIdle').onclick = function() {
+      queue.idle().then(function() {
+        log('queueLog', 'idle() resolved');
+      });
+    };
+
+    // 5) validx
+    var validator = zxd.createValidator({
+      name: ['required', { rule: 'minLen', value: 3, message: '用户名至少3位' }],
+      email: ['required', 'email'],
+      pwd: [{ rule: 'minLen', value: 6, message: '密码至少6位' }],
+      pwd2: [{ rule: 'sameAs', value: 'pwd', message: '两次密码不一致' }]
+    });
+    validator.extendRule('nickname', function(v) {
+      if (!v) return true;
+      return /^[a-zA-Z0-9_]+$/.test(v) || '昵称只允许字母数字下划线';
+    });
+
+    function getFormData() {
+      return {
+        name: document.getElementById('formName').value,
+        email: document.getElementById('formEmail').value,
+        pwd: document.getElementById('formPwd').value,
+        pwd2: document.getElementById('formPwd2').value
+      };
+    }
+
+    document.getElementById('btnValidateSync').onclick = function() {
+      var out = validator.validate(getFormData());
+      log('validLog', pretty(out));
+    };
+    document.getElementById('btnValidateAsync').onclick = function() {
+      var asyncValidator = zxd.createValidator({
+        email: [
+          'required',
+          'email',
+          {
+            rule: 'async',
+            async: true,
+            validator: function(value) {
+              return zxd.wait(400).then(function() {
+                if (String(value).indexOf('taken') >= 0) return '邮箱已被占用';
+                return true;
+              });
+            }
+          }
+        ]
+      });
+      asyncValidator.validateAsync({ email: document.getElementById('formEmail').value }).then(function(out) {
+        log('validLog', pretty(out));
+      });
+    };
+
+    // 6) tplx
+    var vm = zxd.tplx.mount('#tplMount', `
+      <h3>模板挂载</h3>
+      <p>name: <strong>{{name}}</strong></p>
+      <p>count: <strong>{{count}}</strong></p>
+      <ul class="todo-list">
+        {{todosHtml}}
+      </ul>
+    `, {
+      name: 'playground',
+      count: 1,
+      todosHtml: '<li>默认任务A</li><li>默认任务B</li>'
+    }, { escape: false });
+
+    zxd.tplx.define('UserCard', {
+      template: `
+        <div style="padding:10px;border:1px solid #e2e8f0;border-radius:10px;">
+          <h4 style="margin:0 0 6px;">{{name}}</h4>
+          <p style="margin:0;color:#64748b;">role: {{role}}</p>
+        </div>
+      `,
+      setup: function(ctx) {
+        return { role: 'member' };
+      }
+    });
+    var card = zxd.tplx.create('UserCard', { name: 'Tom' });
+
+    document.getElementById('btnTplRender').onclick = function() {
+      var items = [
+        { text: '待办：写文档' },
+        { text: '待办：补测试' },
+        { text: '待办：发 PR' }
+      ];
+      vm.patch({
+        todosHtml: zxd.tplx.list(items, '<li>{{text}}</li>', { escape: true, join: '' }),
+        count: vm.state().count + 1
+      });
+    };
+    document.getElementById('btnTplPatch').onclick = function() {
+      vm.patch({ name: 'module-' + Math.floor(Math.random() * 10), count: vm.state().count + 1 });
+    };
+    document.getElementById('btnTplComp').onclick = function() {
+      card.update('#tplComp', { name: 'User-' + Math.floor(Math.random() * 99), role: 'admin' });
+    };
+    card.mount('#tplComp');
+
+    // 7) routerx
+    var router = zxd.createRouter({
+      view: '#routerView',
+      routes: [
+        { path: '/', component: function() { return '<h3>首页</h3><p>欢迎来到 routerx</p>'; } },
+        { path: '/list', component: function() { return '<h3>列表</h3><p>这里可以放业务列表页面。</p>'; } },
+        { path: '/detail/:id', component: function(to) { return '<h3>详情</h3><p>当前 ID: <strong>' + to.params.id + '</strong></p>'; } }
+      ],
+      notFound: function() { return '<h3>404</h3><p>路由不存在。</p>'; }
+    });
+    router.beforeEach(function(to, from, next) {
+      log('mainLog', 'router beforeEach => ' + to.path);
+      next(true);
+    });
+    router.afterEach(function(to) {
+      log('mainLog', 'router afterEach => ' + to.path);
+    });
+    router.start();
+
+    // 8) httpx
+    var api = zxd.httpCreate({
+      baseURL: 'https://jsonplaceholder.typicode.com',
+      timeout: 8000,
+      retries: 2,
+      retryDelay: 300
+    });
+    api.useRequest(function(cfg) {
+      cfg.headers['X-Demo'] = 'zxlite-playground';
+      return cfg;
+    });
+    api.useResponse(function(res) {
+      log('mainLog', 'http response ' + res.status);
+      return res;
+    });
+    api.useError(function(err) {
+      log('mainLog', 'http error ' + err.message);
+      return err;
+    });
+
+    document.getElementById('btnFetchPosts').onclick = function() {
+      api.get('/posts', { _limit: 3 }).then(function(res) {
+        log('mainLog', 'posts => ' + pretty(res.data.map(function(x) {
+          return { id: x.id, title: x.title.slice(0, 24) + '...' };
+        })));
+      }).catch(function(e) {
+        log('mainLog', 'fetch failed: ' + e.message);
+      });
+    };
+
+    // 9) pipeline/retry
+    document.getElementById('btnRunPipeline').onclick = function() {
+      zxd.pipeline([
+        function(input) { log('mainLog', 'pipeline step1 input=' + input); return input + 1; },
+        function(input) { log('mainLog', 'pipeline step2 input=' + input); return input * 2; },
+        function(input) { log('mainLog', 'pipeline step3 input=' + input); return 'final=' + input; }
+      ], 3).then(function(out) {
+        log('mainLog', 'pipeline result => ' + out);
+      });
+    };
+    document.getElementById('btnRunRetry').onclick = function() {
+      var n = 0;
+      zxd.retry(function() {
+        n++;
+        if (n < 3) throw new Error('第' + n + '次故意失败');
+        return '第' + n + '次成功';
+      }, { times: 4, delay: 250, factor: 1.2 }).then(function(out) {
+        log('mainLog', 'retry result => ' + out);
+      }).catch(function(e) {
+        log('mainLog', 'retry failed => ' + e.message);
+      });
+    };
+
+    // 首屏输出
+    renderStore();
+    renderQueueState();
+    zxd.toast('Advanced Playground Ready', 1200);
+  </script>
+</body>
+</html>
