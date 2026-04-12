@@ -1,5 +1,5 @@
 /**
- * zxlite.js - 轻量级前端工具库 v2.0.0
+ * zxlite.js - 轻量级前端工具库 v2.0.1
  * 新增高级模块：bus/store/router/http/cache/queue/valid/template
  */
 (function(global) {
@@ -19,6 +19,7 @@
         _customStyle: null,
         _currentTheme: 'light1',
         _themeEnabled: false,
+        _unsafeImport: false,
         _pkgUrl: 'https://res.viqu.com/web/lib/zxlite/',
         _pkgs: new Map(),
         _aliases: new Map(),
@@ -130,6 +131,55 @@
         }
         return Z._dialogStyles[Z._currentStyle] || Z._dialogStyles.light1;
     }
+    
+    function sanitizeHtml(html) {
+        var raw = String(html == null ? '' : html);
+        var template = document.createElement('template');
+        template.innerHTML = raw;
+        
+        var blockedTags = {
+            SCRIPT: true,
+            IFRAME: true,
+            OBJECT: true,
+            EMBED: true,
+            LINK: true,
+            META: true,
+            STYLE: true
+        };
+        
+        function walk(node) {
+            if (!node) return;
+            if (node.nodeType === 1) {
+                var tag = node.tagName;
+                if (blockedTags[tag]) {
+                    node.remove();
+                    return;
+                }
+                var attrs = Array.from(node.attributes || []);
+                for (var i = 0; i < attrs.length; i++) {
+                    var name = attrs[i].name;
+                    var value = attrs[i].value || '';
+                    var lower = name.toLowerCase();
+                    if (lower.indexOf('on') === 0 || lower === 'srcdoc') {
+                        node.removeAttribute(name);
+                        continue;
+                    }
+                    if ((lower === 'href' || lower === 'src' || lower === 'xlink:href') && /^\s*javascript:/i.test(value)) {
+                        node.removeAttribute(name);
+                    }
+                }
+            }
+            var children = Array.from(node.childNodes || []);
+            for (var j = 0; j < children.length; j++) walk(children[j]);
+        }
+        
+        walk(template.content);
+        return template.innerHTML;
+    }
+    
+    Z.sanitizeHtml = function(html) {
+        return sanitizeHtml(html);
+    };
     
     function applyTheme(themeName, customColor) {
         Z._themeEnabled = true;
@@ -310,7 +360,7 @@
         var inputEl = null;
         
         if (customHtml) {
-            dialog.innerHTML = customHtml;
+            dialog.innerHTML = sanitizeHtml(customHtml);
             var allElements = dialog.querySelectorAll('*');
             for (var i = 0; i < allElements.length; i++) {
                 allElements[i].style.color = s.text;
@@ -418,7 +468,7 @@
         var el = getEl(id);
         if (!el) return false;
         if (type === 'text') el.textContent = val;
-        else if (type === 'html') el.innerHTML = val;
+        else if (type === 'html') el.innerHTML = sanitizeHtml(val);
         else if (type === 'val') { if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') el.value = val; else el.textContent = val; }
         else if (type === 'attr') { for (var k in val) el.setAttribute(k, val[k]); }
         else if (type === 'css') { for (var k in val) el.style[k] = val[k]; }
@@ -457,7 +507,7 @@
     Z.addClass = function(id, cls) { var el = getEl(id); if (el) el.classList.add(cls); return el; };
     Z.rmClass = function(id, cls) { var el = getEl(id); if (el) el.classList.remove(cls); return el; };
     Z.hasClass = function(id, cls) { var el = getEl(id); return el ? el.classList.contains(cls) : false; };
-    Z.html = function(id, html) { var el = getEl(id); if (!el) return null; if (html === undefined) return el.innerHTML; el.innerHTML = html; return el; };
+    Z.html = function(id, html, unsafe) { var el = getEl(id); if (!el) return null; if (html === undefined) return el.innerHTML; el.innerHTML = unsafe ? String(html) : sanitizeHtml(html); return el; };
     Z.text = function(id, txt) { var el = getEl(id); if (!el) return null; if (txt === undefined) return el.textContent; el.textContent = txt; return el; };
     Z.val = function(id, v) { var el = getEl(id); if (!el) return null; if (v === undefined) { if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return el.value; return el.textContent; } if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') el.value = v; else el.textContent = v; return el; };
     Z.css = function(id, prop, val) { var el = getEl(id); if (!el) return null; if (typeof prop === 'object') { for (var k in prop) el.style[k] = prop[k]; return el; } if (val === undefined) return getComputedStyle(el)[prop]; el.style[prop] = val; return el; };
@@ -760,6 +810,12 @@
         return false;
     };
     
+    Z.importUnsafe = function(enable) {
+        Z._unsafeImport = !!enable;
+        console.warn('zxlite import unsafe mode:', Z._unsafeImport ? 'ON' : 'OFF');
+        return Z._unsafeImport;
+    };
+    
     Z.query = async function(pkgName) {
         try {
             var url = Z._pkgUrl + pkgName + '/desc.prop';
@@ -805,8 +861,33 @@
             var code = await response.text();
             console.log('获取代码成功，长度:', code.length);
             
-            // 执行代码（代码中会创建 window.pkgName 对象）
-            eval(code);
+            // 优先支持 JSON 包格式（更安全）
+            var asJson = null;
+            if (/^\s*[\[{]/.test(code.trim())) {
+                try {
+                    asJson = JSON.parse(code);
+                } catch (_) {}
+            }
+            if (asJson && typeof asJson === 'object') {
+                Z._pkgs.set(pkgName, asJson);
+                window[pkgName] = asJson;
+                console.log('包导入成功(JSON):', pkgName, Object.keys(asJson));
+                return true;
+            }
+            
+            // JS 包执行必须显式打开不安全模式
+            if (!Z._unsafeImport) {
+                console.error('导入被拒绝：远程 JS 包执行默认禁用。若确认可信，请先执行 zxd.importUnsafe(true)');
+                return false;
+            }
+            
+            // 在显式不安全模式下使用 script 注入（不使用 eval）
+            var script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.setAttribute('data-zxlite-import', pkgName);
+            script.text = code + '\n//# sourceURL=zxlite-import-' + pkgName + '.js';
+            document.head.appendChild(script);
+            script.remove();
             
             // 获取包导出的内容
             var pkgExports = window[pkgName] || {};
@@ -985,8 +1066,8 @@
     Z.ele = function(id, act) { var el = getEl(id); if (el && act === 'click') { el.click(); return true; } return false; };
     
     // ==================== 网络请求 ====================
-    Z.ajaxGet = function(url) { return fetch(url).then(function(r) { return r.text(); }).catch(function(e) { return ''; }); };
-    Z.ajaxPost = function(url, data) { var fd = new URLSearchParams(); for (var k in data) fd.append(k, data[k]); return fetch(url, { method: 'POST', body: fd }).then(function(r) { return r.text(); }); };
+    Z.ajaxGet = function(url, opts) { opts = opts || {}; return fetch(url, opts).then(function(r) { if (!r.ok && opts.throwOnHttpError !== false) throw new Error('HTTP ' + r.status); return r.text(); }).catch(function(e) { if (opts.silent !== false) return ''; throw e; }); };
+    Z.ajaxPost = function(url, data, opts) { opts = opts || {}; var fd = new URLSearchParams(); data = data || {}; for (var k in data) fd.append(k, data[k]); return fetch(url, { method: 'POST', body: fd, headers: opts.headers || undefined }).then(function(r) { if (!r.ok && opts.throwOnHttpError !== false) throw new Error('HTTP ' + r.status); return r.text(); }).catch(function(e) { if (opts.silent !== false) return ''; throw e; }); };
     Z.gu = function(url) { return Z.ajaxGet(url); };
     Z.post = function(url, data) { return Z.ajaxPost(url, data); };
     
@@ -998,7 +1079,11 @@
             if (act === 'add') { d[key] = val; return d; }
             if (act === 'del') { delete d[key]; return d; }
             if (act === 'get') return d[key];
-            if (act === 'list') return d[key];
+            if (act === 'list') {
+                if (Array.isArray(d)) return d.slice();
+                if (d && typeof d === 'object') return Object.keys(d);
+                return [];
+            }
             return d;
         } catch(e) { console.error(e); return null; }
     };
@@ -1040,10 +1125,118 @@
     // ==================== 计算 ====================
     Z.calc = function(expr, rem) {
         try {
-            var ex = expr.replace(/\b(abs|sin|cos|tan|sqrt|pow|exp|log|floor|ceil|round)\b/g, 'Math.$1');
-            ex = ex.replace(/\bPI\b/g, 'Math.PI').replace(/\bE\b/g, 'Math.E');
-            var r = Function('"use strict";return (' + ex + ')')();
-            return rem ? r % 1 : r;
+            var source = String(expr == null ? '' : expr);
+            var tokenReg = /\s*([A-Za-z_][A-Za-z0-9_]*|\d*\.\d+|\d+|[()+\-*/%^,])\s*/g;
+            var tokens = [];
+            var consumed = '';
+            var m;
+            while ((m = tokenReg.exec(source)) !== null) {
+                tokens.push(m[1]);
+                consumed += m[0];
+            }
+            if (consumed.replace(/\s+/g, '') !== source.replace(/\s+/g, '')) {
+                throw new Error('invalid character in expression');
+            }
+            var i = 0;
+            var fnMap = {
+                abs: Math.abs,
+                sin: Math.sin,
+                cos: Math.cos,
+                tan: Math.tan,
+                sqrt: Math.sqrt,
+                pow: Math.pow,
+                exp: Math.exp,
+                log: Math.log,
+                floor: Math.floor,
+                ceil: Math.ceil,
+                round: Math.round
+            };
+            
+            function peek() { return tokens[i]; }
+            function next() { return tokens[i++]; }
+            function expect(tok) { if (next() !== tok) throw new Error('expected ' + tok); }
+            
+            function parseExpr() {
+                var v = parseTerm();
+                while (peek() === '+' || peek() === '-') {
+                    var op = next();
+                    var rhs = parseTerm();
+                    v = op === '+' ? v + rhs : v - rhs;
+                }
+                return v;
+            }
+            
+            function parseTerm() {
+                var v = parsePower();
+                while (peek() === '*' || peek() === '/' || peek() === '%') {
+                    var op = next();
+                    var rhs = parsePower();
+                    if (op === '*') v = v * rhs;
+                    else if (op === '/') v = v / rhs;
+                    else v = v % rhs;
+                }
+                return v;
+            }
+            
+            function parsePower() {
+                var v = parseUnary();
+                if (peek() === '^') {
+                    next();
+                    var rhs = parsePower();
+                    v = Math.pow(v, rhs);
+                }
+                return v;
+            }
+            
+            function parseUnary() {
+                if (peek() === '+') { next(); return parseUnary(); }
+                if (peek() === '-') { next(); return -parseUnary(); }
+                return parsePrimary();
+            }
+            
+            function parseArgs() {
+                var args = [];
+                if (peek() === ')') return args;
+                args.push(parseExpr());
+                while (peek() === ',') {
+                    next();
+                    args.push(parseExpr());
+                }
+                return args;
+            }
+            
+            function parsePrimary() {
+                var t = peek();
+                if (t === '(') {
+                    next();
+                    var inside = parseExpr();
+                    expect(')');
+                    return inside;
+                }
+                if (/^\d*\.?\d+$/.test(t || '')) {
+                    next();
+                    return parseFloat(t);
+                }
+                if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(t || '')) {
+                    next();
+                    if (t === 'PI') return Math.PI;
+                    if (t === 'E') return Math.E;
+                    if (peek() === '(') {
+                        if (!fnMap[t]) throw new Error('unknown function: ' + t);
+                        next();
+                        var args = parseArgs();
+                        expect(')');
+                        return fnMap[t].apply(null, args);
+                    }
+                    throw new Error('unknown identifier: ' + t);
+                }
+                throw new Error('unexpected token: ' + t);
+            }
+            
+            var result = parseExpr();
+            if (i !== tokens.length) throw new Error('unexpected token tail');
+            if (!isFinite(result)) throw new Error('calc result is not finite');
+            return rem ? result % 1 : result;
         } catch(e) { console.error(e); return NaN; }
     };
     
@@ -1195,7 +1388,7 @@
     
 })(typeof window !== 'undefined' ? window : this);
 
-if (typeof console !== 'undefined') console.log('zxlite.js v2.0.0 loaded - 高级模块已启用');
+if (typeof console !== 'undefined') console.log('zxlite.js v2.0.1 loaded - 安全与稳定性增强');
 
 // 设置默认 Toast 背景色
 (function() {
@@ -1208,7 +1401,7 @@ if (typeof console !== 'undefined') console.log('zxlite.js v2.0.0 loaded - 高�
 })();
 
 /**
- * zxlite.js Advanced Extension Pack v2.0.0
+ * zxlite.js Advanced Extension Pack v2.0.1
  * 提供高级能力：事件总线、状态管理、路由、HTTP、缓存、队列、校验、模板等
  */
 (function(global) {
@@ -2309,7 +2502,7 @@ if (typeof console !== 'undefined') console.log('zxlite.js v2.0.0 loaded - 高�
             var p = path || '/';
             if (replace) {
                 var next = window.location.pathname + window.location.search + '#' + p;
-                window.location.replace(next);
+                history.replaceState(history.state || {}, '', next);
             } else {
                 window.location.hash = p;
             }
@@ -2361,15 +2554,15 @@ if (typeof console !== 'undefined') console.log('zxlite.js v2.0.0 loaded - 高�
                 var out = comp(to);
                 if (out instanceof Promise) {
                     return out.then(function(html) {
-                        if (html !== undefined) el.innerHTML = html;
+                        if (html !== undefined) el.innerHTML = Z.sanitizeHtml ? Z.sanitizeHtml(html) : String(html);
                         return true;
                     });
                 }
-                if (out !== undefined) el.innerHTML = out;
+                if (out !== undefined) el.innerHTML = Z.sanitizeHtml ? Z.sanitizeHtml(out) : String(out);
                 return true;
             }
             if (typeof comp === 'string') {
-                el.innerHTML = comp;
+                el.innerHTML = Z.sanitizeHtml ? Z.sanitizeHtml(comp) : String(comp);
                 return true;
             }
             return false;
@@ -2921,6 +3114,36 @@ if (typeof console !== 'undefined') console.log('zxlite.js v2.0.0 loaded - 高�
             });
         }
         
+        function deepEqual(a, b, seenA, seenB) {
+            if (a === b) return true;
+            if (a == null || b == null) return a === b;
+            if (typeof a !== typeof b) return false;
+            if (typeof a !== 'object') return a === b;
+            var sa = seenA || [];
+            var sb = seenB || [];
+            for (var i = 0; i < sa.length; i++) {
+                if (sa[i] === a) return sb[i] === b;
+            }
+            sa.push(a);
+            sb.push(b);
+            if (Array.isArray(a)) {
+                if (!Array.isArray(b) || a.length !== b.length) return false;
+                for (var ai = 0; ai < a.length; ai++) {
+                    if (!deepEqual(a[ai], b[ai], sa, sb)) return false;
+                }
+                return true;
+            }
+            var keysA = Object.keys(a);
+            var keysB = Object.keys(b);
+            if (keysA.length !== keysB.length) return false;
+            for (var k = 0; k < keysA.length; k++) {
+                var key = keysA[k];
+                if (!Object.prototype.hasOwnProperty.call(b, key)) return false;
+                if (!deepEqual(a[key], b[key], sa, sb)) return false;
+            }
+            return true;
+        }
+        
         function watch(path, handler, cfg) {
             if (typeof handler !== 'function') return function() {};
             var opt = cfg || {};
@@ -2929,7 +3152,7 @@ if (typeof console !== 'undefined') console.log('zxlite.js v2.0.0 loaded - 高�
             if (opt.immediate) handler(zClone(oldVal), undefined, { immediate: true, path: path });
             var un = bus.on('change', function(info) {
                 var next = getState(path);
-                var changed = deep ? JSON.stringify(next) !== JSON.stringify(oldVal) : next !== oldVal;
+                var changed = deep ? !deepEqual(next, oldVal) : next !== oldVal;
                 if (!changed) return;
                 var prev = oldVal;
                 oldVal = zClone(next);
