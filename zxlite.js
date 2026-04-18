@@ -875,8 +875,11 @@
                 return true;
             }
             
+            var isOfficialSource = Z._pkgUrl === 'https://res.viqu.com/web/lib/zxlite/' ||
+                               Z._pkgUrl.startsWith('https://res.viqu.com/');
+            
             // JS 包执行必须显式打开不安全模式
-            if (!Z._unsafeImport) {
+            if (!Z._unsafeImport && !isOfficialSource) {
                 console.error('导入被拒绝：远程 JS 包执行默认禁用。若确认可信，请先执行 zxd.importUnsafe(true)');
                 return false;
             }
