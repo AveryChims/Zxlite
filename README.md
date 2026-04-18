@@ -1,10 +1,10 @@
 # zxlite.js 完整 API 参考手册
 
-**版本**: v2.0.0
+**版本**: v2.0.1
 
 ## 概述
 
-zxlite.js 是一个轻量级前端工具库，提供 DOM 操作、音频控制、动画效果、对话框扩展、动态主题、包管理、数据处理、网络请求等完整功能。v2.0.0 额外加入事件总线、状态管理、路由、HTTP 客户端、缓存、队列、校验器、模板系统等高级能力。所有 API 通过 `zxd` 对象调用，函数名简洁（1-10 个字符）。
+zxlite.js 是一个轻量级前端工具库，提供 DOM 操作、音频控制、动画效果、对话框扩展、动态主题、包管理、数据处理、网络请求等完整功能。v2.0.0 额外加入事件总线、状态管理、路由、HTTP 客户端、缓存、队列、校验器、模板系统等高级能力；v2.0.1 重点强化了安全与稳定性。所有 API 通过 `zxd` 对象调用，函数名简洁（1-10 个字符）。
 
 **注意:**
  - 对话框深色模式建议搭配深色主题，浅色建议搭配浅色主题！
@@ -230,6 +230,7 @@ zxd.dialogx('标题', '内容', '按钮1', 回调1, '按钮2', 回调2, '按钮3
 |------|------|------|
 | `zxd.score(url)` | 设置包来源 | `zxd.score('https://example.com/packages/')` |
 | `zxd.import(pkgName)` | 导入单个包 | `await zxd.import('test')` |
+| `zxd.importUnsafe(true/false)` | 开关远程 JS 包执行（默认 false） | `zxd.importUnsafe(true)` |
 | `zxd.imports(pkg1, pkg2, ...)` | 导入多个包 | `await zxd.imports('test', 'utils')` |
 | `zxd.query(pkgName)` | 获取包信息 | `var info = await zxd.query('test')` |
 | `zxd.alias(pkgName, alias)` | 设置包别名 | `zxd.alias('test', 'abc')` |
@@ -269,6 +270,9 @@ description=这是一个测试包
 ### 使用示例
 
 ```javascript
+// 远程 JS 包默认禁用执行，确认可信时手动打开：
+zxd.importUnsafe(true);
+
 // 导入包
 await zxd.import('test');
 
@@ -287,6 +291,8 @@ var result2 = abc.test("内容");
 // 修改包来源
 zxd.score('https://my-server.com/packages/');
 ```
+
+> 安全提示：默认情况下建议使用 JSON 包格式；仅在你完全信任包源时再开启 `importUnsafe(true)`。
 
 ---
 
@@ -501,7 +507,7 @@ zxd.score('https://my-server.com/packages/');
 
 ---
 
-## 二十一、高级模块（v2.0.0 新增）
+## 二十一、高级模块（v2.0.0+）
 
 从 v2.0.0 开始，zxlite 内置一批“工程化能力”。
 这批 API 不会破坏你已有的 `zxd.set / zxd.dialog / zxd.toast` 用法，属于增强层。
@@ -792,6 +798,7 @@ var els = zxd.gui('class', 'card', true);
 var el = zxd.gui('id', 'demo');
 
 // ========== 包管理（v1.4.0） ==========
+zxd.importUnsafe(true); // 仅信任源时开启
 await zxd.import('test');
 var result = test.test("内容");
 var info = await zxd.query('test');
@@ -935,6 +942,7 @@ var copy = zxd.cloneDeep({a:1,b:{c:2}});
 
 | 版本 | 更新内容 |
 |------|----------|
+| v2.0.1 | 安全/稳定性修复：导入默认禁用远程JS执行、calc安全解析、HTML注入点清洗、router replace无刷新、watch深比较优化、min文件同步 |
 | v2.0.0 | 新增高级工程模块：bus/store/router/http/cache/queue/valid/template/date/pipeline/retry |
 | v1.4.0 | 新增包管理(import/score/imports/query/alias)，对话框完全独立于主题 |
 | v1.3.9 | 对话框独立样式，ntm_开头元素不受主题影响 |
