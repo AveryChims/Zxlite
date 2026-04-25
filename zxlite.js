@@ -798,6 +798,129 @@
     
     // ==================== 包管理功能 ====================
     
+    Z.importf = async function(folderPath) {
+        try {
+            // 规范化路径
+            var basePath = folderPath.replace(/\/$/, '');
+            var pkgName = basePath.split('/').pop();
+        
+            // 检查是否已导入
+            if (Z._pkgs.has(pkgName)) {
+                console.log('包已导入:', pkgName);
+                return true;
+            }
+        
+            // 获取 desc.prop 文件
+            var descUrl = basePath + '/desc.prop';
+            console.log('读取包描述:', descUrl);
+            
+            var descResponse = await fetch(descUrl);
+            if (!descResponse.ok) {
+                throw new Error('无法获取 desc.prop: HTTP ' + descResponse.status);
+            }
+            
+            var descText = await descResponse.text();
+            var info = {};
+            var lines = descText.split('\n');
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i].trim();
+                if (line === '') continue;
+                var eqIndex = line.indexOf('=');
+                if (eqIndex > 0) {
+                    var key = line.substring(0, eqIndex).trim();
+                    var val = line.substring(eqIndex + 1).trim();
+                    info[key] = val;
+                }
+            }
+        
+            console.log('包信息:', info);
+        
+            // 获取 main.zxd 文件
+            var mainUrl = basePath + '/main.zxd';
+            console.log('读取包主文件:', mainUrl);
+            
+            var mainResponse = await fetch(mainUrl);
+            if (!mainResponse.ok) {
+                throw new Error('无法获取 main.zxd: HTTP ' + mainResponse.status);
+            }
+            
+            var code = await mainResponse.text();
+            console.log('获取代码成功，长度:', code.length);
+            
+            // 优先支持 JSON 包格式
+            var asJson = null;
+            if (/^\s*[\[{]/.test(code.trim())) {
+                try {
+                    asJson = JSON.parse(code);
+                } catch (_) {}
+            }
+            
+            if (asJson && typeof asJson === 'object') {
+            // JSON 包
+                Z._pkgs.set(pkgName, asJson);
+                window[pkgName] = asJson;
+                console.log('本地包导入成功(JSON):', pkgName, Object.keys(asJson));
+                
+                // 触发全局更新事件
+                if (Z.update) Z.update();
+                return true;
+            }
+        
+            // JS 包执行（本地包不需要安全验证）
+            // 使用 script 注入方式执行
+            var script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.setAttribute('data-zxlite-import', pkgName);
+            script.setAttribute('data-zxlite-source', 'local');
+            
+            script.text = code + '\n//# sourceURL=zxlite-local-import-' + pkgName + '.js';
+            document.head.appendChild(script);
+        
+            // 等待脚本执行
+            await new Promise(resolve => setTimeout(resolve, 50));
+            script.remove();
+            
+            // 获取包导出的内容
+            var pkgExports = window[pkgName] || {};
+            
+            Z._pkgs.set(pkgName, pkgExports);
+            
+            console.log('本地包导入成功(JS):', pkgName, Object.keys(pkgExports));
+        
+            // 触发全局更新事件
+            if (Z.update) Z.update();
+            
+            return true;
+        } catch(e) {
+            console.error('导入本地包失败:', e.message);
+            console.error('失败路径:', folderPath);
+            return false;
+        }
+    };
+
+    Z.importfs = async function() {
+        var args = Array.prototype.slice.call(arguments);
+        var promises = [];
+        for (var i = 0; i < args.length; i++) {
+            promises.push(Z.importf(args[i]));
+        }
+        return Promise.all(promises).then(function(results) {
+            for (var i = 0; i < results.length; i++) {
+                if (!results[i]) return false;
+            }
+            return true;
+        });
+    };
+    
+    Z.importfa = async function(folderPath, alias) {
+        var success = await Z.importf(folderPath);
+        if (success && alias) {
+            var pkgName = folderPath.replace(/\/$/, '').split('/').pop();
+            return Z.alias(pkgName, alias);
+        }
+        return success;
+    };
+
     Z.score = function(url) {
         if (url && typeof url === 'string') {
             if (!url.endsWith('/')) {
