@@ -370,4 +370,319 @@ zxd.score('https://my-server.com/packages/');
 | `zxd.time(type)` | 获取时间 | `zxd.time(0)` |
 | `zxd.now()` | 获取时间戳 | `zxd.now()` |
 | `zxd.rand(min, max, decimal)` | 随机数 | `zxd.rand(1, 100, false)` |
-| `zxd.uuid()` |
+| `zxd.uuid()` | 生成 UUID | `zxd.uuid()` |
+| `zxd.randomStr(len)` | 生成随机字符串 | `zxd.randomStr(8)` |
+
+### time type 参数
+
+| type | 格式示例 |
+|------|----------|
+| 0 | 2024-01-01 12:30:45 |
+| 1 | 2024/01/01 12:30:45 |
+| 2 | 2024-01-01 |
+| 3 | 12:30:45 |
+| 4 | 时间戳（毫秒） |
+| 5 | 2024年01月01日 12:30:45 |
+
+---
+
+## 十四、数学计算
+
+| 方法 | 说明 | 示例 |
+|------|------|------|
+| `zxd.calc(expression, remainderOnly)` | 数学表达式计算 | `zxd.calc('abs(-5) + sin(0.5) * 10')` |
+
+### 支持函数
+
+| 函数 | 说明 |
+|------|------|
+| `abs()` | 绝对值 |
+| `sin()` | 正弦 |
+| `cos()` | 余弦 |
+| `tan()` | 正切 |
+| `sqrt()` | 平方根 |
+| `pow()` | 幂运算 |
+| `exp()` | 指数 |
+| `log()` | 自然对数 |
+| `floor()` | 向下取整 |
+| `ceil()` | 向上取整 |
+| `round()` | 四舍五入 |
+
+### 支持常量
+
+| 常量 | 值 |
+|------|-----|
+| `PI` | 3.141592653589793 |
+| `E` | 2.718281828459045 |
+
+---
+
+## 十五、渐变背景
+
+| 方法 | 说明 | 示例 |
+|------|------|------|
+| `zxd.bm(direction, id, colors)` | 设置渐变背景 | `zxd.bm('topbottom', 'box', '#ff0000|#00ff00')` |
+
+### direction 参数
+
+| 方向 | 说明 |
+|------|------|
+| `topbottom` | 从上到下 |
+| `leftright` | 从左到右 |
+| `rightleft` | 从右到左 |
+| `bottomtop` | 从下到上 |
+| `TL_BR` | 左上到右下 |
+| `trbl` | 右上到左下 |
+| `brtl` | 右下到左上 |
+| `bltr` | 左下到右上 |
+
+---
+
+## 十六、存储
+
+| 方法 | 说明 | 示例 |
+|------|------|------|
+| `zxd.store(key, value)` | localStorage 操作 | `zxd.store('name', '张三')` |
+| `zxd.clear()` | 清空 localStorage | `zxd.clear()` |
+| `zxd.rmItem(key)` | 删除 localStorage 项 | `zxd.rmItem('name')` |
+| `zxd.cookie(key, value, days)` | Cookie 操作 | `zxd.cookie('token', 'abc123', 7)` |
+
+---
+
+## 十七、设备与浏览器信息
+
+| 方法 | 说明 | 示例 |
+|------|------|------|
+| `zxd.ua()` | 获取 UserAgent | `zxd.ua()` |
+| `zxd.url()` | 获取当前页面 URL | `zxd.url()` |
+| `zxd.host()` | 获取当前域名 | `zxd.host()` |
+| `zxd.path()` | 获取当前路径 | `zxd.path()` |
+| `zxd.isMobile()` | 是否移动端 | `if(zxd.isMobile())` |
+| `zxd.isPC()` | 是否 PC 端 | `if(zxd.isPC())` |
+| `zxd.isIOS()` | 是否 iOS 设备 | `if(zxd.isIOS())` |
+| `zxd.isAndroid()` | 是否安卓设备 | `if(zxd.isAndroid())` |
+
+---
+
+## 十八、URL 参数操作
+
+| 方法 | 说明 | 示例 |
+|------|------|------|
+| `zxd.getParam(name)` | 获取 URL 参数 | `var id = zxd.getParam('id')` |
+| `zxd.setParam(name, value)` | 设置 URL 参数 | `zxd.setParam('page', '2')` |
+| `zxd.delParam(name)` | 删除 URL 参数 | `zxd.delParam('page')` |
+
+---
+
+## 十九、图片处理
+
+| 方法 | 说明 | 示例 |
+|------|------|------|
+| `zxd.rotate(img, angle)` | 旋转图片，返回 Promise | `zxd.rotate('image.jpg', 90).then(dataUrl=>{})` |
+| `zxd.crop(img, sx, ex, sy, ey)` | 裁剪图片，返回 Promise | `zxd.crop('image.jpg', 0, 100, 0, 100)` |
+| `zxd.izz(img, angle)` | rotate 的别名 | - |
+| `zxd.czz(img, sx, ex, sy, ey)` | crop 的别名 | - |
+
+---
+
+## 二十、其他工具函数
+
+| 方法 | 说明 | 示例 |
+|------|------|------|
+| `zxd.wait(ms)` | 延迟执行（Promise） | `await zxd.wait(1000)` |
+| `zxd.pause(ms)` | 延迟执行（别名） | `await zxd.pause(1000)` |
+| `zxd.delay(ms)` | 延迟执行（别名） | `await zxd.delay(1000)` |
+| `zxd.sleep(ms)` | 延迟执行（别名） | `await zxd.sleep(1000)` |
+| `zxd.log(msg)` | 控制台输出 | `zxd.log('消息')` |
+| `zxd.print(msg)` | 控制台输出（别名） | `zxd.print('消息')` |
+| `zxd.edit(enable)` | 页面编辑模式 | `zxd.edit(true)` |
+| `zxd.dl(path)` | 发起下载 | `zxd.dl('file.pdf')` |
+| `zxd.sdl(path)` | 下载（别名） | `zxd.sdl('file.pdf')` |
+| `zxd.load(url)` | 动态加载 JS 脚本 | `zxd.load('lib.js').then(()=>{})` |
+| `zxd.update()` | 触发全局更新事件 | `zxd.update()` |
+| `zxd.debounce(fn, delay)` | 防抖函数 | `var fn = zxd.debounce(()=>{}, 500)` |
+| `zxd.throttle(fn, delay)` | 节流函数 | `var fn = zxd.throttle(()=>{}, 500)` |
+| `zxd.cloneDeep(obj)` | 深拷贝 | `var copy = zxd.cloneDeep(obj)` |
+| `zxd.isStr(v)` | 是否字符串 | `zxd.isStr('hello')` |
+| `zxd.isNum(v)` | 是否数字 | `zxd.isNum(123)` |
+| `zxd.isArr(v)` | 是否数组 | `zxd.isArr([1,2,3])` |
+| `zxd.isObj(v)` | 是否对象 | `zxd.isObj({a:1})` |
+| `zxd.isFn(v)` | 是否函数 | `zxd.isFn(()=>{})` |
+| `zxd.px(v)` | 转 px 单位 | `zxd.px(10)` |
+| `zxd.em(v)` | 转 em 单位 | `zxd.em(1.5)` |
+| `zxd.stop()` | 强制停止 JS 执行 | `zxd.stop()` |
+| `zxd.break()` | 强制停止（别名） | `zxd.break()` |
+
+---
+
+## 完整示例代码
+
+```javascript
+// ========== DOM 操作 ==========
+zxd.set('demo', 'text', 'Hello World');
+var text = zxd.get('demo', 'text');
+zxd.new('base', 'newBox', 'div', {color:'red',padding:'10px'});
+zxd.del('newBox');
+
+// 获取元素
+var els = zxd.gui('class', 'card', true);
+var el = zxd.gui('id', 'demo');
+
+// ========== 包管理（v1.4.0） ==========
+await zxd.import('test');
+var result = test.test("内容");
+var info = await zxd.query('test');
+zxd.alias('test', 'abc');
+
+// ========== 音频控制 ==========
+var ctrl = zxd.play('music.mp3');
+zxd.pc(ctrl, 'pause');
+zxd.pc(ctrl, 'continue');
+zxd.pc(ctrl, 'stop');
+var isPlaying = zxd.pis(ctrl);
+var progress = zxd.pp(ctrl);
+var duration = zxd.pa(ctrl);
+zxd.pv(ctrl, 50);
+
+// ========== 动画 ==========
+zxd.anim('box', 'bounce', 500);
+zxd.addAnim('custom', {opacity:0}, {opacity:1}, 300);
+zxd.anim('box', 'custom', 300);
+
+// ========== 对话框 ==========
+// 单按钮
+zxd.dialogx('提示', '操作成功', '确定', () => console.log('确定'));
+
+// 双按钮（使用 light1 样式）
+zxd.dialogx('确认', '确定删除吗？', '取消', () => console.log('取消'), '确认', () => console.log('删除'), false, null, 'light1');
+
+// 三按钮（使用 dark1 样式）
+zxd.dialogx('选择', '请选择', 'A', () => console.log('A'), 'B', () => console.log('B'), 'C', () => console.log('C'), false, null, 'dark1');
+
+// 输入框对话框
+let name = await zxd.dialogi('输入', '请输入姓名:', '确定');
+console.log('输入:', name);
+
+// 自定义布局
+let view = zxd.dialogc('<div><input id="myInput"><button id="myBtn">提交</button></div>', true);
+let btn = zxd.dialogd(view, 'myBtn');
+btn.onclick = () => { console.log('提交'); };
+
+// 切换全局对话框样式
+zxd.dialogs('dark1');
+
+// ========== Toast ==========
+zxd.toast('底部提示', 2000);
+zxd.toastt('顶部提示', 2000);
+
+// 开关动画
+zxd.dialoga(false);  // 关闭对话框动画
+zxd.toasta(false);   // 关闭 Toast 动画
+
+// ========== 动态主题 ==========
+zxd.style('dark1', '#7c3aed');  // 暗色主题，紫色主色
+zxd.style('light1');            // 亮色主题
+
+// ========== 页面控制 ==========
+zxd.meta('title', '新标题');
+zxd.page('top');
+zxd.full();
+
+// ========== JSON 操作 ==========
+var data = {name:'张三', age:18};
+data = zxd.json(data, 'add', 'city', '北京');
+var age = zxd.json(data, 'get', 'age');
+
+// ========== 网络请求 ==========
+zxd.ajaxGet('https://api.example.com').then(html => console.log(html));
+zxd.ajaxPost('https://api.example.com', {name:'张三'}).then(res => {});
+
+// ========== 事件绑定 ==========
+zxd.on('btn', 'click', () => alert('clicked'));
+zxd.ele('btn', 'click');
+
+// ========== 字符串操作 ==========
+var result = zxd.rp('abc abc', 'a', 'x', true);
+var base64 = zxd.mk('Hello 世界');
+var decoded = zxd.rk(base64);
+zxd.copy('复制内容');
+
+// ========== 时间 ==========
+var time = zxd.time(0);
+var timestamp = zxd.now();
+
+// ========== 随机数 ==========
+var num = zxd.rand(1, 100, false);
+var uuid = zxd.uuid();
+
+// ========== 计算 ==========
+var calc = zxd.calc('abs(-5) + sin(0.5) * 10');
+
+// ========== 渐变 ==========
+zxd.bm('topbottom', 'box', '#ff0000|#00ff00');
+
+// ========== 存储 ==========
+zxd.store('name', '张三');
+var name = zxd.store('name');
+zxd.cookie('token', 'abc123', 7);
+
+// ========== 设备判断 ==========
+if (zxd.isMobile()) console.log('手机端');
+
+// ========== URL 参数 ==========
+var id = zxd.getParam('id');
+zxd.setParam('page', '2');
+
+// ========== 图片处理 ==========
+zxd.rotate('image.jpg', 90).then(dataUrl => {});
+zxd.crop('image.jpg', 0, 100, 0, 100).then(dataUrl => {});
+
+// ========== 工具函数 ==========
+await zxd.wait(1000);
+zxd.edit(true);
+zxd.dl('/file.pdf');
+zxd.update(); // 触发全局更新
+
+// 防抖节流
+var fn = zxd.debounce(() => console.log('执行'), 500);
+var fn2 = zxd.throttle(() => console.log('执行'), 1000);
+
+// 深拷贝
+var copy = zxd.cloneDeep({a:1,b:{c:2}});
+```
+
+---
+
+## 注意事项
+
+1. 所有 API 通过 `zxd` 对象调用，如 `zxd.set()`
+2. 音频播放需要用户交互，首次播放可能需要点击页面
+3. 动画使用 Web Animations API，兼容现代浏览器
+4. 网络请求需要服务器支持 CORS
+5. 对话框默认点击外面不关闭（可通过参数配置）
+6. Toast 连续触发时会自动排队，每个完整显示设定时长
+7. 动态主题会自动计算文本颜色并应用到所有页面元素
+8. 对话框完全不受主题影响，保持独立样式
+9. `ntm_` 开头的元素不受主题影响
+10. 所有延迟方法返回 Promise，可使用 async/await
+
+---
+
+## 版本历史
+
+| 版本 | 更新内容 |
+|------|----------|
+| v1.4.0 | 新增包管理(import/score/imports/query/alias)，对话框完全独立于主题 |
+| v1.3.9 | 对话框独立样式，ntm_开头元素不受主题影响 |
+| v1.3.8 | 原有对话框调用dialogx，对话框样式优先 |
+| v1.3.7 | 优化深色模式 Toast 阴影、颜色协调、Toast 连续触发修复 |
+| v1.3.6 | Toast 透明背景、自动文本颜色、完整主题系统 |
+| v1.3.5 | 修复 Toast 边框、主题文本颜色 |
+| v1.3.4 | 主题系统、动画控制、对话框动画 |
+| v1.3.3 | 6 种对话框样式有明显差异 |
+| v1.3.2 | 修复对话框样式和双按钮 |
+| v1.3.1 | 修复对话框样式 |
+| v1.3.0 | 新增 dialogx/dialogi/dialogc、6种样式、动态主题 |
+| v1.2.0 | 新增 30+ 动画、完整 DOM 操作 |
+| v1.1.0 | 新增 60+ 工具函数 |
+| v1.0.0 | 初始版本 |
