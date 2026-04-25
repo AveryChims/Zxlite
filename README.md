@@ -250,7 +250,7 @@ http://res.viqu.com/web/lib/zxlite/包名/
 ```
 ./lib/包名/
 ├── main.zxd       # JS代码(必须包含)
-├── desc.prop      # 包信息(必须包含)
+└── desc.prop      # 包信息(必须包含)
 ```
 
 ### main.zxd 示例
