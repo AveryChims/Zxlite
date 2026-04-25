@@ -1,3 +1,4 @@
+![image](https://res.viqu.com/web/js/zxlite.png)
 # zxlite.js 完整 API 参考手册
 
 **版本**: v2.0.1
