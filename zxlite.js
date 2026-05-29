@@ -1,6 +1,6 @@
 /**
- * zxlite.js - 轻量级前端工具库 v2.0.1
- * 新增高级模块：bus/store/router/http/cache/queue/valid/template
+ * zxlite.js - 轻量级前端工具库 v2.0.2
+ * 修复dialogi不显示内容的bug
  */
 (function(global) {
     'use strict';
@@ -383,6 +383,12 @@
             dialog.appendChild(titleEl);
             
             if (isInput) {
+                if (content) {
+                    var labelEl = document.createElement('p');
+                    labelEl.textContent = content;
+                    labelEl.style.cssText = 'margin:0 0 8px 0;color:' + (s.textSec || s.text) + ';font-size:14px;';
+                    dialog.appendChild(labelEl);
+                }
                 inputEl = document.createElement('input');
                 inputEl.type = 'text';
                 inputEl.value = inputVal;
