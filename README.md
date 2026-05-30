@@ -66,7 +66,7 @@ _如有问题可以换成https://res.viqu.com/web/js/zxlite.js_
 
 ## 二、音频控制（7 个）
 
-| 方法 | 说明 | 示例 |
+| 方法 |     说明     | 示例 |
 |------|------|------|
 | `zxd.play(url)` | 播放音乐，返回控制器 ID | `var ctrl = zxd.play('music.mp3')` |
 | `zxd.pc(id, action)` | 控制音频 | `zxd.pc(ctrl, 'pause')` |
