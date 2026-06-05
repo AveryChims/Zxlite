@@ -1,7 +1,7 @@
 ![image](https://res.viqu.com/web/js/zxlite.png)
 # zxlite.js 完整 API 参考手册
 
-**版本**: v2.0.1
+**版本**: v2.0.3
 
 ## 概述
 
@@ -114,6 +114,7 @@ _如有问题可以换成https://res.viqu.com/web/js/zxlite.js_
 ---
 
 ## 四、对话框（6 种样式）
+_所有对话框都会返回对话框id和关闭对象
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
@@ -122,6 +123,10 @@ _如有问题可以换成https://res.viqu.com/web/js/zxlite.js_
 | `zxd.dialogi(...)` | 输入框对话框，返回 Promise | `var val = await zxd.dialogi('输入', '请输入姓名:', '确定')` |
 | `zxd.dialogc(html, outsideClose, outsideFn)` | 自定义布局对话框 | `zxd.dialogc('<div>自定义内容</div>', true)` |
 | `zxd.dialogd(view, id)` | 获取自定义对话框内元素 | `var btn = zxd.dialogd(view, 'myBtn')` |
+| `zxd.closeDialog(dialogId)` | 关闭指定ID的对话框 | `zxd.closeDialog(dlg.dialogId)` |
+| `zxd.closeAllDialogs()` | 关闭所有活动对话框 | `zxd.closeAllDialogs()` |
+| `zxd.dialogCount()` | 获取当前活动对话框数量 | `let count = zxd.dialogCount()` |
+| `zxd.getDialogIds()` | 获取所有活动对话框ID数组 | `let ids = zxd.getDialogIds()` |
 | `zxd.dialogs(style)` | 设置全局对话框样式 | `zxd.dialogs('dark1')` |
 | `zxd.dialoga(true/false)` | 开启/关闭对话框动画 | `zxd.dialoga(false)` |
 
@@ -672,6 +677,8 @@ var copy = zxd.cloneDeep({a:1,b:{c:2}});
 
 | 版本 | 更新内容 |
 |------|----------|
+| v2.0.3 | 添加了更加高级的对话框系统 |
+| v2.0.2 | 修复dialogi的内容不显示bug |
 | v2.0.1 | 添加了importf从本地加载包(文件夹)，官方包和本地包不需要解锁安全保护 |
 | v2.0.0 | 重点强化了安全与稳定性 |
 | v1.4.0 | 新增包管理(import/score/imports/query/alias)，对话框完全独立于主题 |
