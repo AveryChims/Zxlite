@@ -31,7 +31,7 @@ _如有问题可以换成https://res.viqu.com/web/js/zxlite.js_
 ## 一、DOM 操作（30+ 个）
 
 | 方法 | 说明 | 示例 |
-|------|:-----------:|------|
+|------|-----------|------|
 | `zxd.set(id, type, value)` | 设置元素属性 | `zxd.set('demo', 'text', 'Hello')` |
 | `zxd.get(id, type)` | 获取元素属性 | `var text = zxd.get('demo', 'text')` |
 | `zxd.new(pid, nid, tag, styles)` | 创建新元素 | `zxd.new('base', 'newDiv', 'div', {color:'red'})` |
