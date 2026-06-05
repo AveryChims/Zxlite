@@ -1,6 +1,6 @@
 /**
- * zxlite.js - 轻量级前端工具库 v2.0.2
- * 修复dialogi不显示内容的bug
+ * zxlite.js - 轻量级前端工具库 v2.0.3
+ * 修复dialogx不能同时显示多个对话框的bug
  */
 (function(global) {
     'use strict';
@@ -12,6 +12,7 @@
         _toast: null,
         _toastTimer: null,
         _dialog: null,
+        _dialogs: new Map(),
         _customAnims: new Map(),
         _dialogAnim: true,
         _toastAnim: true,
@@ -316,26 +317,12 @@
         document.head.appendChild(style);
     }
     
+    
+    // 修改 createDialogCore 函数
     function createDialogCore(opts) {
-        if (Z._dialog) { 
-            if (Z._dialogAnim && Z._dialog) {
-                var oldDialog = Z._dialog.querySelector('.zxlite-dialog');
-                if (oldDialog) {
-                    oldDialog.classList.add('zx-dialog-anim-out');
-                    setTimeout(function() {
-                        if (Z._dialog && Z._dialog.parentNode) Z._dialog.remove();
-                        Z._dialog = null;
-                    }, 200);
-                } else {
-                    Z._dialog.remove();
-                    Z._dialog = null;
-                }
-            } else {
-                Z._dialog.remove();
-                Z._dialog = null;
-            }
-        }
+        // 不再关闭已有对话框，允许多个同时存在
         
+        var dialogId = 'zx_dialog_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
         var title = opts.title || '';
         var content = opts.content || '';
         var btns = opts.btns || [];
@@ -345,19 +332,45 @@
         var isInput = opts.isInput === true;
         var inputVal = opts.inputValue || '';
         var customHtml = opts.customHtml || null;
+        var onClose = opts.onClose || null; // 添加关闭回调
+        var zIndex = opts.zIndex || (10000 + Z._dialogs.size); // 动态z-index
         
         var s = getStyle(styleName);
         
         var overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000;';
+        overlay.setAttribute('data-zx-dialog-id', dialogId);
+        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:' + zIndex + ';';
         
         var dialog = document.createElement('div');
         dialog.className = 'zxlite-dialog';
         if (Z._dialogAnim) dialog.classList.add('zx-dialog-anim');
         dialog.setAttribute('data-zx-dialog', 'true');
+        dialog.setAttribute('data-zx-dialog-id', dialogId);
         dialog.style.cssText = 'background:' + s.bg + ';border-radius:' + s.radius + ';padding:' + s.padding + ';min-width:280px;max-width:90%;box-shadow:' + s.shadow + ';color:' + s.text + ';border:1px solid ' + s.border + ';';
         
         var inputEl = null;
+        
+        // 关闭当前对话框的函数
+        var closeDialog = function() {
+            var overlayEl = Z._dialogs.get(dialogId);
+            if (!overlayEl) return;
+            
+            var dialogEl = overlayEl.querySelector('.zxlite-dialog');
+            if (Z._dialogAnim && dialogEl) {
+                dialogEl.classList.add('zx-dialog-anim-out');
+                setTimeout(function() {
+                    if (overlayEl && overlayEl.parentNode) overlayEl.remove();
+                    Z._dialogs.delete(dialogId);
+                    if (outsideFn && typeof outsideFn === 'function') outsideFn();
+                    if (onClose && typeof onClose === 'function') onClose();
+                }, 200);
+            } else {
+                if (overlayEl && overlayEl.parentNode) overlayEl.remove();
+                Z._dialogs.delete(dialogId);
+                if (outsideFn && typeof outsideFn === 'function') outsideFn();
+                if (onClose && typeof onClose === 'function') onClose();
+            }
+        };
         
         if (customHtml) {
             dialog.innerHTML = sanitizeHtml(customHtml);
@@ -375,6 +388,15 @@
                     allElements[i].style.borderColor = s.border;
                     allElements[i].style.borderRadius = s.btnRadius;
                 }
+            }
+            // 自定义HTML中的关闭逻辑需要手动处理
+            // 可以添加 data-close-dialog 属性来关闭
+            var closeTriggers = dialog.querySelectorAll('[data-close-dialog]');
+            for (var j = 0; j < closeTriggers.length; j++) {
+                closeTriggers[j].onclick = function(e) {
+                    e.stopPropagation();
+                    closeDialog();
+                };
             }
         } else {
             var titleEl = document.createElement('h3');
@@ -404,21 +426,6 @@
             var btnDiv = document.createElement('div');
             btnDiv.style.cssText = 'display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap;margin-top:0;';
             
-            var closeDialog = function() {
-                if (Z._dialogAnim && dialog) {
-                    dialog.classList.add('zx-dialog-anim-out');
-                    setTimeout(function() {
-                        if (overlay.parentNode) overlay.remove();
-                        Z._dialog = null;
-                        if (outsideFn && typeof outsideFn === 'function') outsideFn();
-                    }, 200);
-                } else {
-                    if (overlay.parentNode) overlay.remove();
-                    Z._dialog = null;
-                    if (outsideFn && typeof outsideFn === 'function') outsideFn();
-                }
-            };
-            
             for (var i = 0; i < btns.length; i++) {
                 var btn = btns[i];
                 var button = document.createElement('button');
@@ -429,14 +436,15 @@
                 } else {
                     button.style.cssText = 'padding:8px 20px;min-width:80px;border:none;border-radius:' + s.btnRadius + ';cursor:pointer;font-size:14px;font-weight:500;background:#f0f0f0;color:#333;border:1px solid ' + s.border + ';transition:all 0.2s;';
                 }
-                button.onclick = (function(btnData, closeFn) {
+                button.onclick = (function(btnData, closeFn, inputElement) {
                     return function() {
+                        var inputValue = inputElement ? inputElement.value : null;
                         closeFn();
                         if (btnData.cb && typeof btnData.cb === 'function') {
-                            btnData.cb(inputEl ? inputEl.value : null);
+                            btnData.cb(inputValue);
                         }
                     };
-                })(btn, closeDialog);
+                })(btn, closeDialog, inputEl);
                 btnDiv.appendChild(button);
             }
             dialog.appendChild(btnDiv);
@@ -444,30 +452,191 @@
         
         overlay.appendChild(dialog);
         document.body.appendChild(overlay);
-        Z._dialog = overlay;
         
+        // 存储对话框
+        Z._dialogs.set(dialogId, overlay);
+        
+        // 点击遮罩层关闭
         if (outsideClose) {
             overlay.onclick = function(e) {
                 if (e.target === overlay) {
-                    if (Z._dialogAnim && dialog) {
-                        dialog.classList.add('zx-dialog-anim-out');
-                        setTimeout(function() {
-                            if (overlay.parentNode) overlay.remove();
-                            Z._dialog = null;
-                            if (outsideFn && typeof outsideFn === 'function') outsideFn();
-                        }, 200);
-                    } else {
-                        if (overlay.parentNode) overlay.remove();
-                        Z._dialog = null;
-                        if (outsideFn && typeof outsideFn === 'function') outsideFn();
-                    }
+                    closeDialog();
                 }
             };
         }
+        
         dialog.onclick = function(e) { e.stopPropagation(); };
         
-        return { dialog: dialog, overlay: overlay, inputEl: inputEl };
+        // 返回更多信息，包括 dialogId 和关闭函数
+        return { 
+            dialog: dialog, 
+            overlay: overlay, 
+            inputEl: inputEl, 
+            dialogId: dialogId,
+            close: closeDialog
+        };
     }
+    
+    // 修改 Z.dialogx 函数，支持返回对话框ID和关闭函数
+    Z.dialogx = function() {
+        var args = Array.prototype.slice.call(arguments);
+        var title = args[0] || '';
+        var content = args[1] || '';
+        var btns = [];
+        var outsideClose = false;
+        var outsideFn = null;
+        var style = null;
+        var onClose = null;
+        var i = 2;
+        
+        while (i < args.length) {
+            if (typeof args[i] === 'boolean') {
+                outsideClose = args[i];
+                i++;
+            } else if (typeof args[i] === 'function') {
+                if (outsideFn === null && onClose === null) {
+                    outsideFn = args[i];
+                } else {
+                    onClose = args[i];
+                }
+                i++;
+            } else if (typeof args[i] === 'string' && (args[i] === 'light1' || args[i] === 'light2' || args[i] === 'light3' || args[i] === 'dark1' || args[i] === 'dark2' || args[i] === 'dark3')) {
+                style = args[i];
+                i++;
+            } else if (typeof args[i] === 'string') {
+                var text = args[i];
+                var cb = (i + 1 < args.length && typeof args[i + 1] === 'function') ? args[i + 1] : null;
+                btns.push({ text: text, cb: cb });
+                i += cb ? 2 : 1;
+            } else {
+                i++;
+            }
+        }
+        
+        if (btns.length === 0) btns.push({ text: '确定', cb: null });
+        return createDialogCore({ 
+            title: title, 
+            content: content, 
+            btns: btns, 
+            outsideClose: outsideClose, 
+            outsideFn: outsideFn, 
+            style: style,
+            onClose: onClose
+        });
+    };
+    
+    // 修改 Z.dialogi 函数（输入框对话框）
+    Z.dialogi = function() {
+        var args = Array.prototype.slice.call(arguments);
+        var title = args[0] || '';
+        var content = args[1] || '';
+        var btns = [];
+        var outsideClose = false;
+        var outsideFn = null;
+        var style = null;
+        var onClose = null;
+        var i = 2;
+        
+        while (i < args.length) {
+            if (typeof args[i] === 'boolean') {
+                outsideClose = args[i];
+                i++;
+            } else if (typeof args[i] === 'function') {
+                if (outsideFn === null && onClose === null) {
+                    outsideFn = args[i];
+                } else {
+                    onClose = args[i];
+                }
+                i++;
+            } else if (typeof args[i] === 'string' && (args[i] === 'light1' || args[i] === 'light2' || args[i] === 'light3' || args[i] === 'dark1' || args[i] === 'dark2' || args[i] === 'dark3')) {
+                style = args[i];
+                i++;
+            } else if (typeof args[i] === 'string') {
+                var text = args[i];
+                var cb = (i + 1 < args.length && typeof args[i + 1] === 'function') ? args[i + 1] : null;
+                btns.push({ text: text, cb: cb });
+                i += cb ? 2 : 1;
+            } else {
+                i++;
+            }
+        }
+        
+        if (btns.length === 0) btns.push({ text: '确定', cb: null });
+        
+        return new Promise(function(resolve) {
+            var result = createDialogCore({ 
+                title: title, 
+                content: content, 
+                btns: btns, 
+                outsideClose: outsideClose, 
+                outsideFn: outsideFn, 
+                style: style, 
+                isInput: true,
+                onClose: onClose
+            });
+            var btnDiv = result.dialog.querySelector('div:last-child');
+            if (btnDiv && btnDiv.children.length > 0) {
+                var lastBtn = btnDiv.children[btnDiv.children.length - 1];
+                var oldClick = lastBtn.onclick;
+                lastBtn.onclick = function() {
+                    var val = result.inputEl ? result.inputEl.value : '';
+                    if (oldClick) oldClick();
+                    resolve(val);
+                };
+            } else {
+                resolve('');
+            }
+        });
+    };
+    
+    // 修改 Z.dialogc 函数（自定义HTML对话框）
+    Z.dialogc = function(html, outsideClose, outsideFn, onClose) {
+        return createDialogCore({ 
+            customHtml: html, 
+            outsideClose: outsideClose === true, 
+            outsideFn: outsideFn || null,
+            onClose: onClose || null
+        });
+    };
+    
+    // 添加关闭指定对话框的方法
+    Z.closeDialog = function(dialogId) {
+        var overlay = Z._dialogs.get(dialogId);
+        if (overlay) {
+            var dialog = overlay.querySelector('.zxlite-dialog');
+            if (Z._dialogAnim && dialog) {
+                dialog.classList.add('zx-dialog-anim-out');
+                setTimeout(function() {
+                    if (overlay && overlay.parentNode) overlay.remove();
+                    Z._dialogs.delete(dialogId);
+                }, 200);
+            } else {
+                if (overlay && overlay.parentNode) overlay.remove();
+                Z._dialogs.delete(dialogId);
+            }
+            return true;
+        }
+        return false;
+    };
+    
+    // 添加关闭所有对话框的方法
+    Z.closeAllDialogs = function() {
+        var dialogIds = Array.from(Z._dialogs.keys());
+        for (var i = 0; i < dialogIds.length; i++) {
+            Z.closeDialog(dialogIds[i]);
+        }
+        return true;
+    };
+    
+    // 获取当前活动对话框数量
+    Z.dialogCount = function() {
+        return Z._dialogs.size;
+    };
+    
+    // 获取所有活动对话框ID
+    Z.getDialogIds = function() {
+        return Array.from(Z._dialogs.keys());
+    };
     
     // ==================== DOM操作 ====================
     Z.set = function(id, type, val) {
