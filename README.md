@@ -1,7 +1,7 @@
 ![image](https://res.viqu.com/web/js/zxlite.png)
 # zxlite.js 完整 API 参考手册
 
-**版本**: v2.0.3
+**版本**: v2.0.4
 
 ## 概述
 
@@ -160,9 +160,24 @@ zxd.dialogx('标题', '内容', '按钮1', 回调1, '按钮2', 回调2, '按钮3
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
-| `zxd.toast(message, duration)` | 底部 Toast 提示 | `zxd.toast('操作成功', 2000)` |
-| `zxd.toastt(message, duration)` | 顶部 Toast 提示 | `zxd.toastt('提示消息', 2000)` |
+| `zxd.toast(message, duration, icon)` | 底部 Toast 提示 | `zxd.toast('操作成功')` |
+| `zxd.toastc(message, duration, icon)` | 中间 Toast 提示 | `zxd.toastc('提示消息', 2000)` |
+| `zxd.toastt(message, duration, icon)` | 顶部 Toast 提示 | `zxd.toastt('提示消息', 2000, '#2')` |
 | `zxd.toasta(true/false)` | 开启/关闭 Toast 动画 | `zxd.toasta(false)` |
+
+**图标：**
+- #0：扳手图标（工具/设置）
+- #1：完成图标（成功/操作完成）
+- #2：警告图标（警告/注意事项）
+- #3：错误图标（错误/失败）
+- #4：疑问图标（确认/询问）
+- #5：信息图标（提示/信息）
+- #6：禁止图标（禁止/拒绝）
+- #7：成功表情（祝贺/成功）
+- #8：失败表情（遗憾/失败）
+- #9：解锁图标（开放/解锁）
+- #10：锁定图标（安全/锁定）
+- @path/to/your/file.svg：自定义图标
 
 **特点：**
 - 连续触发时自动排队，每个 Toast 完整显示设定时长
@@ -677,6 +692,7 @@ var copy = zxd.cloneDeep({a:1,b:{c:2}});
 
 | 版本 | 更新内容 |
 |------|----------|
+| v2.0.4 | 添加了Toast图标支持(Github上面的没着色图标是黑色的，viqu.com上面的是白色的) |
 | v2.0.3 | 添加了更加高级的对话框系统 |
 | v2.0.2 | 修复dialogi的内容不显示bug |
 | v2.0.1 | 添加了importf从本地加载包(文件夹)，官方包和本地包不需要解锁安全保护 |
