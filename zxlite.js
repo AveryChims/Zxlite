@@ -1,6 +1,6 @@
 /**
- * zxlite.js - 轻量级前端工具库 v2.0.3
- * 修复dialogx不能同时显示多个对话框的bug
+ * zxlite.js - 轻量级前端工具库 v2.0.4
+ * 添加提示toast图标支持，添加中间弹出提示选项
  */
 (function(global) {
     'use strict';
@@ -114,6 +114,40 @@
             glow: { init: { boxShadow: '0 0 0 rgba(102,126,234,0)' }, key: { boxShadow: '0 0 20px rgba(102,126,234,0.8)' }, dur: 300, alt: true, iter: 2 },
             bounceIn: { init: { transform: 'scale(0.3)', opacity: 0 }, key: { transform: 'scale(1)', opacity: 1 }, dur: 500 },
             dropIn: { init: { transform: 'translateY(-100px)', opacity: 0 }, key: { transform: 'translateY(0)', opacity: 1 }, dur: 500 }
+        },
+        _icons: {
+            1: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#35CD00"><path d="M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M16.59 7.58L10 14.17L7.41 11.59L6 13L10 17L18 9L16.59 7.58Z"/></svg>',
+            2: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#ff9000"><path d="M12,2L1,21H23M12,6L19.53,19H4.47M11,10V14H13V10M11,16V18H13V16"/></svg>',
+            3: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#f00"><path d="M8.27,3L3,8.27V15.73L8.27,21H15.73C17.5,19.24 21,15.73 21,15.73V8.27L15.73,3M9.1,5H14.9L19,9.1V14.9L14.9,19H9.1L5,14.9V9.1M9.12,7.71L7.71,9.12L10.59,12L7.71,14.88L9.12,16.29L12,13.41L14.88,16.29L16.29,14.88L13.41,12L16.29,9.12L14.88,7.71L12,10.59"/></svg>',
+            4: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4747FF"><path d="M4,2A2,2 0 0,0 2,4V16A2,2 0 0,0 4,18H8V21A1,1 0 0,0 9,22H9.5V22C9.75,22 10,21.9 10.2,21.71L13.9,18H20A2,2 0 0,0 22,16V4C22,2.89 21.1,2 20,2H4M4,4H20V16H13.08L10,19.08V16H4V4M12.19,5.5C11.3,5.5 10.59,5.68 10.05,6.04C9.5,6.4 9.22,7 9.27,7.69C0.21,7.69 6.57,7.69 11.24,7.69C11.24,7.41 11.34,7.2 11.5,7.06C11.7,6.92 11.92,6.85 12.19,6.85C12.5,6.85 12.77,6.93 12.95,7.11C13.13,7.28 13.22,7.5 13.22,7.8C13.22,8.08 13.14,8.33 13,8.54C12.83,8.76 12.62,8.94 12.36,9.08C11.84,9.4 11.5,9.68 11.29,9.92C11.1,10.16 11,10.5 11,11H13C13,10.72 13.05,10.5 13.14,10.32C13.23,10.15 13.4,10 13.66,9.85C14.12,9.64 14.5,9.36 14.79,9C15.08,8.63 15.23,8.24 15.23,7.8C15.23,7.1 14.96,6.54 14.42,6.12C13.88,5.71 13.13,5.5 12.19,5.5M11,12V14H13V12H11Z"/></svg>',
+            5: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4747FF"><path d="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z"/></svg>',
+            6: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#f00"><path d="M3 16C3 20.42 6.58 24 11 24C14.43 24 17.5 21.91 18.77 18.73L21.33 12.3C21.58 11.66 21.56 10.92 21.18 10.35C20.69 9.61 19.82 9.29 19 9.5L18.22 9.73C17.76 9.85 17.34 10.08 17 10.39V4.5C17 3.12 15.88 2 14.5 2C14.31 2 14.13 2 13.96 2.06C13.75 .89 12.73 0 11.5 0C10.44 0 9.54 .66 9.17 1.59C8.96 1.53 8.73 1.5 8.5 1.5C7.12 1.5 6 2.62 6 4V4.55C5.84 4.5 5.67 4.5 5.5 4.5C4.12 4.5 3 5.62 3 7V16M5 7C5 6.72 5.22 6.5 5.5 6.5S6 6.72 6 7V12H8V4C8 3.72 8.22 3.5 8.5 3.5S9 3.72 9 4V12H11V2.5C11 2.22 11.22 2 11.5 2S12 2.22 12 2.5V12H14V4.5C14 4.22 14.22 4 14.5 4S15 4.22 15 4.5V15H17L18 12.5C18.15 12.05 18.5 11.71 19 11.59L19.5 11.45L16.91 18C15.95 20.41 13.61 22 11 22C7.69 22 5 19.31 5 16V7Z"/></svg>',
+            7: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12,2C6.47,2 2,6.47 2,12C2,17.53 6.47,22 12,22A10,10 0 0,0 22,12C22,6.47 17.5,2 12,2M12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M13,9.94L14.06,11L15.12,9.94L16.18,11L17.24,9.94L15.12,7.82L13,9.94M8.88,9.94L9.94,11L11,9.94L8.88,7.82L6.76,9.94L7.82,11L8.88,9.94M12,17.5C14.33,17.5 16.31,16.04 17.11,14H6.89C7.69,16.04 9.67,17.5 12,17.5Z"/></svg>',
+            8: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12M22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2A10,10 0 0,1 22,12M15.5,8C16.3,8 17,8.7 17,9.5C17,10.3 16.3,11 15.5,11C14.7,11 14,10.3 14,9.5C14,8.7 14.7,8 15.5,8M10,9.5C10,10.3 9.3,11 8.5,11C7.7,11 7,10.3 7,9.5C7,8.7 7.7,8 8.5,8C9.3,8 10,8.7 10,9.5M12,14C13.75,14 15.29,14.72 16.19,15.81L14.77,17.23C14.32,16.5 13.25,16 12,16C10.75,16 9.68,16.5 9.23,17.23L7.81,15.81C8.71,14.72 10.25,14 12,14Z"/></svg>',
+            9: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 13C11.1 13 12 13.89 12 15C12 16.11 11.11 17 10 17S8 16.11 8 15 8.9 13 10 13M18 1C15.24 1 13 3.24 13 6V8H4C2.9 8 2 8.9 2 10V20C2 21.1 2.9 22 4 22H16C17.1 22 18 21.1 18 20V10C18 8.9 17.1 8 16 8H15V6C15 4.34 16.34 3 18 3S21 4.34 21 6V8H23V6C23 3.24 20.76 1 18 1M16 10V20H4V10H16Z"/></svg>',
+            10: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12,17C10.89,17 10,16.1 10,15C10,13.89 10.89,13 12,13A2,2 0 0,1 14,15A2,2 0 0,1 12,17M18,20V10H6V20H18M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6C4.89,22 4,21.1 4,20V10C4,8.89 4.89,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z"/></svg>',
+            0: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22.61,19L13.53,9.91C14.46,7.57 14,4.81 12.09,2.91C9.79,0.61 6.21,0.4 3.66,2.26L7.5,6.11L6.08,7.5L2.25,3.69C0.39,6.23 0.6,9.82 2.9,12.11C4.76,13.97 7.47,14.46 9.79,13.59L18.9,22.7C19.29,23.09 19.92,23.09 20.31,22.7L22.61,20.4C23,20 23,19.39 22.61,19M19.61,20.59L10.15,11.13C9.54,11.58 8.86,11.85 8.15,11.95C6.79,12.15 5.36,11.74 4.32,10.7C3.37,9.76 2.93,8.5 3,7.26L6.09,10.35L10.33,6.11L7.24,3C8.5,2.95 9.73,3.39 10.68,4.33C11.76,5.41 12.17,6.9 11.92,8.29C11.8,9 11.5,9.66 11.04,10.25L20.5,19.7L19.61,20.59Z"/></svg>'
+        },
+        
+        _getIcon: function(icon) {
+            if (!icon) return '';
+            
+            // #0 ~ #10 内置图标
+            if (typeof icon === 'string' && icon.startsWith('#')) {
+                var num = parseInt(icon.substring(1), 10);
+                if (!isNaN(num) && num >= 0 && num <= 10) {
+                    return this._icons[num] || this._icons[0] || '';
+                }
+                return '';
+            }
+            
+            // @./file.png 或 @http://xxx.png 文件路径
+            if (typeof icon === 'string' && icon.startsWith('@')) {
+                var imgPath = icon.substring(1);
+                return '<img src="' + sanitizeHtml(imgPath) + '" style="width:24px;height:24px;" />';
+            }
+            
+            return '';
         }
     };
     
@@ -255,7 +289,7 @@
                 background: var(--zx-primary-light) !important;
                 color: var(--zx-text) !important;
             }
-            .zxlite-toast, .zxlite-toast-top {
+            .zxlite-toast, .zxlite-toast-top, .zxlite-toast-center {
                 background: var(--zx-toast-bg) !important;
                 color: var(--zx-text) !important;
                 backdrop-filter: blur(10px) !important;
@@ -295,6 +329,14 @@
                 from { opacity: 1; transform: translateX(-50%) translateY(0); }
                 to { opacity: 0; transform: translateX(-50%) translateY(-20px); }
             }
+            @keyframes zx-toast-center-in {
+                from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+                to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            }
+            @keyframes zx-toast-center-out {
+                from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                to { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            }
             .zx-dialog-anim {
                 animation: zx-fade-in 0.2s ease forwards;
             }
@@ -313,11 +355,15 @@
             .zx-toast-top-anim-out {
                 animation: zx-toast-top-out 0.2s ease forwards;
             }
+            .zx-toast-center-anim {
+                animation: zx-toast-center-in 0.2s ease forwards;
+            }
+            .zx-toast-center-anim-out {
+                animation: zx-toast-center-out 0.2s ease forwards;
+            }
         `;
         document.head.appendChild(style);
     }
-    
-    
     // 修改 createDialogCore 函数
     function createDialogCore(opts) {
         // 不再关闭已有对话框，允许多个同时存在
@@ -808,20 +854,53 @@
     
     Z.dialogi = function() {
         var args = Array.prototype.slice.call(arguments);
-        var title = args[0] || '';
-        var content = args[1] || '';
+        var icon = null;
+        var title = '';
+        var content = '';
+        var startIdx = 0;
+        
+        // 检查第一个参数是否是图标标识（数字 -1~10）
+        if (args.length > 0) {
+            var first = args[0];
+            if (typeof first === 'number' && first >= -1 && first <= 10) {
+                if (first >= 0 && first <= 10) {
+                    icon = '#' + first;
+                    startIdx = 1;
+                } else if (first === -1) {
+                    // 最后一个参数是图标路径
+                    icon = args[args.length - 1];
+                    if (typeof icon === 'string') {
+                        icon = '@' + icon;
+                        args.pop();
+                    } else {
+                        icon = null;
+                    }
+                    startIdx = 1;
+                }
+            }
+        }
+        
+        // 获取标题和内容
+        title = args[startIdx] || '';
+        content = args[startIdx + 1] || '';
+        
         var btns = [];
         var outsideClose = false;
         var outsideFn = null;
         var style = null;
-        var i = 2;
+        var onClose = null;
+        var i = startIdx + 2;
         
         while (i < args.length) {
             if (typeof args[i] === 'boolean') {
                 outsideClose = args[i];
                 i++;
             } else if (typeof args[i] === 'function') {
-                outsideFn = args[i];
+                if (outsideFn === null && onClose === null) {
+                    outsideFn = args[i];
+                } else {
+                    onClose = args[i];
+                }
                 i++;
             } else if (typeof args[i] === 'string' && (args[i] === 'light1' || args[i] === 'light2' || args[i] === 'light3' || args[i] === 'dark1' || args[i] === 'dark2' || args[i] === 'dark3')) {
                 style = args[i];
@@ -839,7 +918,17 @@
         if (btns.length === 0) btns.push({ text: '确定', cb: null });
         
         return new Promise(function(resolve) {
-            var result = createDialogCore({ title: title, content: content, btns: btns, outsideClose: outsideClose, outsideFn: outsideFn, style: style, isInput: true });
+            var result = createDialogCore({ 
+                title: title, 
+                content: content, 
+                btns: btns, 
+                outsideClose: outsideClose, 
+                outsideFn: outsideFn, 
+                style: style, 
+                isInput: true,
+                onClose: onClose,
+                icon: icon
+            });
             var btnDiv = result.dialog.querySelector('div:last-child');
             if (btnDiv && btnDiv.children.length > 0) {
                 var lastBtn = btnDiv.children[btnDiv.children.length - 1];
@@ -855,8 +944,56 @@
         });
     };
     
-    Z.dialogc = function(html, outsideClose, outsideFn) {
-        return createDialogCore({ customHtml: html, outsideClose: outsideClose === true, outsideFn: outsideFn || null });
+    
+    Z.dialogc = function() {
+        var args = Array.prototype.slice.call(arguments);
+        var icon = null;
+        var customHtml = '';
+        var outsideClose = false;
+        var outsideFn = null;
+        var onClose = null;
+        var startIdx = 0;
+        
+        // 检查第一个参数是否是图标标识（数字 -1~10）
+        if (args.length > 0) {
+            var first = args[0];
+            if (typeof first === 'number' && first >= -1 && first <= 10) {
+                if (first >= 0 && first <= 10) {
+                    icon = '#' + first;
+                    startIdx = 1;
+                } else if (first === -1) {
+                    // 最后一个参数是图标路径
+                    icon = args[args.length - 1];
+                    if (typeof icon === 'string') {
+                        icon = '@' + icon;
+                        args.pop();
+                    } else {
+                        icon = null;
+                    }
+                    startIdx = 1;
+                }
+            }
+        }
+        
+        // 获取参数
+        customHtml = args[startIdx] || '';
+        if (typeof args[startIdx + 1] === 'boolean') {
+            outsideClose = args[startIdx + 1];
+        }
+        if (typeof args[startIdx + 2] === 'function') {
+            outsideFn = args[startIdx + 2];
+        }
+        if (typeof args[startIdx + 3] === 'function') {
+            onClose = args[startIdx + 3];
+        }
+        
+        return createDialogCore({ 
+            customHtml: customHtml, 
+            outsideClose: outsideClose === true, 
+            outsideFn: outsideFn || null,
+            onClose: onClose || null,
+            icon: icon
+        });
     };
     
     Z.dialogd = function(view, id) {
@@ -957,7 +1094,7 @@
                     background: var(--zx-primary-light) !important;
                     color: var(--zx-text) !important;
                 }
-                .zxlite-toast, .zxlite-toast-top {
+                .zxlite-toast, .zxlite-toast-top, zxlite-toast-center {
                     background: var(--zx-toast-bg) !important;
                     color: var(--zx-text) !important;
                     backdrop-filter: blur(10px) !important;
@@ -1221,8 +1358,20 @@
     };
     
     // ==================== Toast ====================
-    Z.toast = function(msg, dur) {
+    Z.toast = function(msg, dur, icon, center) {
+        // 处理参数：如果第二个参数是字符串（图标），则将其作为图标
+        if (typeof dur === 'string' && (dur.startsWith('#') || dur.startsWith('@'))) {
+            icon = dur;
+            dur = 2000;
+        }
+        // 如果第三个参数是布尔值，则作为 center
+        if (typeof icon === 'boolean') {
+            center = icon;
+            icon = null;
+        }
+        
         dur = dur || 2000;
+        center = center || false;
         
         if (Z._toastTimer) {
             clearTimeout(Z._toastTimer);
@@ -1231,18 +1380,54 @@
         
         function showNewToast() {
             var toast = document.createElement('div');
-            toast.textContent = msg;
-            toast.className = 'zxlite-toast';
-            if (Z._toastAnim) toast.classList.add('zx-toast-anim');
-            toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:8px;font-size:14px;z-index:10001;max-width:80%;text-align:center;';
-            if (msg.length > 30) toast.style.whiteSpace = 'normal';
-            else toast.style.whiteSpace = 'nowrap';
+            toast.className = center ? 'zxlite-toast-center' : 'zxlite-toast';
+            if (Z._toastAnim) toast.classList.add(center ? 'zx-toast-center-anim' : 'zx-toast-anim');
+            
+            // 构建内容
+            var iconHtml = '';
+            if (icon) {
+                iconHtml = Z._getIcon(icon);
+                if (iconHtml) {
+                    toast.style.display = 'flex';
+                    toast.style.alignItems = 'center';
+                    toast.style.gap = '10px';
+                }
+            }
+            
+            var msgSpan = document.createElement('span');
+            msgSpan.textContent = String(msg == null ? '' : msg);
+            if (iconHtml) {
+                var iconWrapper = document.createElement('div');
+                iconWrapper.style.cssText = 'display:flex;align-items:center;justify-content:center;flex-shrink:0;';
+                iconWrapper.innerHTML = iconHtml;
+                var svgEl = iconWrapper.querySelector('svg');
+                if (svgEl) {
+                    svgEl.style.width = '20px';
+                    svgEl.style.height = '20px';
+                    svgEl.style.display = 'block';
+                }
+                toast.appendChild(iconWrapper);
+                toast.appendChild(msgSpan);
+            } else {
+                toast.textContent = msg;
+            }
+            
+            // 定位样式
+            if (center) {
+                toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);padding:12px 24px;border-radius:8px;font-size:16px;z-index:10001;max-width:80%;text-align:center;' + (iconHtml ? 'display:flex;align-items:center;gap:10px;' : '');
+            } else {
+                toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:8px;font-size:14px;z-index:10001;max-width:80%;text-align:center;' + (iconHtml ? 'display:flex;align-items:center;gap:10px;' : '');
+            }
+            
+            if (msg && msg.length > 30 && !center) toast.style.whiteSpace = 'normal';
+            else if (!center) toast.style.whiteSpace = 'nowrap';
+            
             document.body.appendChild(toast);
             Z._toast = toast;
             
             Z._toastTimer = setTimeout(function() { 
                 if (Z._toastAnim && Z._toast) {
-                    Z._toast.classList.add('zx-toast-anim-out');
+                    Z._toast.classList.add(center ? 'zx-toast-center-anim-out' : 'zx-toast-anim-out');
                     setTimeout(function() {
                         if (Z._toast && Z._toast.parentNode) {
                             Z._toast.remove();
@@ -1262,7 +1447,8 @@
         
         if (Z._toast) {
             if (Z._toastAnim) {
-                Z._toast.classList.add('zx-toast-anim-out');
+                var isCenter = Z._toast.classList.contains('zxlite-toast-center');
+                Z._toast.classList.add(isCenter ? 'zx-toast-center-anim-out' : 'zx-toast-anim-out');
                 setTimeout(function() {
                     if (Z._toast && Z._toast.parentNode) {
                         Z._toast.remove();
@@ -1281,7 +1467,13 @@
         return true;
     };
     
-    Z.toastt = function(msg, dur) {
+    Z.toastt = function(msg, dur, icon) {
+        // 处理参数：如果第二个参数是字符串（图标），则将其作为图标
+        if (typeof dur === 'string' && (dur.startsWith('#') || dur.startsWith('@'))) {
+            icon = dur;
+            dur = 2000;
+        }
+        
         dur = dur || 2000;
         
         if (Z._toastTimer) {
@@ -1291,11 +1483,40 @@
         
         function showNewToast() {
             var toast = document.createElement('div');
-            toast.textContent = msg;
             toast.className = 'zxlite-toast-top';
             if (Z._toastAnim) toast.classList.add('zx-toast-top-anim');
-            toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:8px;font-size:14px;z-index:10001;max-width:80%;text-align:center;';
-            if (msg.length > 30) toast.style.whiteSpace = 'normal';
+            
+            // 构建内容
+            var iconHtml = '';
+            if (icon) {
+                iconHtml = Z._getIcon(icon);
+                if (iconHtml) {
+                    toast.style.display = 'flex';
+                    toast.style.alignItems = 'center';
+                    toast.style.gap = '10px';
+                }
+            }
+            
+            var msgSpan = document.createElement('span');
+            msgSpan.textContent = String(msg == null ? '' : msg);
+            if (iconHtml) {
+                var iconWrapper = document.createElement('div');
+                iconWrapper.style.cssText = 'display:flex;align-items:center;justify-content:center;flex-shrink:0;';
+                iconWrapper.innerHTML = iconHtml;
+                var svgEl = iconWrapper.querySelector('svg');
+                if (svgEl) {
+                    svgEl.style.width = '20px';
+                    svgEl.style.height = '20px';
+                    svgEl.style.display = 'block';
+                }
+                toast.appendChild(iconWrapper);
+                toast.appendChild(msgSpan);
+            } else {
+                toast.textContent = msg;
+            }
+            
+            toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:8px;font-size:14px;z-index:10001;max-width:80%;text-align:center;' + (iconHtml ? 'display:flex;align-items:center;gap:10px;' : '');
+            if (msg && msg.length > 30) toast.style.whiteSpace = 'normal';
             else toast.style.whiteSpace = 'nowrap';
             document.body.appendChild(toast);
             Z._toast = toast;
@@ -1339,6 +1560,15 @@
             showNewToast();
         }
         return true;
+    };
+    
+    Z.toastc = function(msg, dur, icon) {
+        // 处理参数：如果第二个参数是字符串（图标），则将其作为图标
+        if (typeof dur === 'string' && (dur.startsWith('#') || dur.startsWith('@'))) {
+            icon = dur;
+            dur = 2000;
+        }
+        return Z.toast(msg, dur, icon, true);
     };
     
     // ==================== 事件绑定 ====================
@@ -1685,7 +1915,7 @@ if (typeof console !== 'undefined') console.log('zxlite.js v2.0.1 loaded - 安�
     if (!document.getElementById('zx-toast-default')) {
         var s = document.createElement('style');
         s.id = 'zx-toast-default';
-        s.textContent = '.zxlite-toast,.zxlite-toast-top{background:rgba(0,0,0,0.85)!important;color:#fff!important;border:1px solid rgba(255,255,255,0.2)!important;border-radius:8px!important;box-shadow:0 4px 15px rgba(0,0,0,0.3)!important;}';
+        s.textContent = '.zxlite-toast,.zxlite-toast-top,.zxlite-toast-center{background:rgba(0,0,0,0.85)!important;color:#fff!important;border:1px solid rgba(255,255,255,0.2)!important;border-radius:8px!important;box-shadow:0 4px 15px rgba(0,0,0,0.3)!important;}';
         document.head.appendChild(s);
     }
 })();
